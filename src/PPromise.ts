@@ -218,19 +218,21 @@ class PPromise {
         //  return new PPromise(...args);
     }
 
-    then(...args: any):
-        PPromise {
+    pushThen(...args : any) : PPromise{
+        this.then(args);
         return this;
     }
 
-    catch
-    (...args: any): PPromise {
-        return this;
+    then(...args: any): Promise<any> {
+        return this.promise.then( ...args );
     }
 
-    finally
-    (...args: any): PPromise {
-        return this;
+    catch(...args: any): Promise<any> {
+        return this.promise.catch( ...args );
+    }
+
+    finally(...args: any): Promise<any> {
+        return this.promise.finally( ...args );
     }
 
 }

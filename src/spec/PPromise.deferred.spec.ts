@@ -35,6 +35,37 @@ describe( 'Deferred Pattern', ()=>{
         expect(myPPromise.result).not.toEqual('post resolve value will fail');
     })
 
+    test('standard:deferred supports `then` method for chaining',async()=>{
+        const myPPromise = new PPromise('initial value');
+        let external ='default value';
+        Promise.resolve(true).then( x=>{
+            console.log('inside different promise')
+            myPPromise.resolve();
+        } )
+        const _p =  myPPromise.then( (x : any )=>x).then((x : any) =>{
+            external = x
+        });
+        console.log('_p', _p);
+        await _p;
+
+        expect(external).toEqual('initial value');
+    })
+
+    test('can chain directly on the promise using then or through PPromise using pushThen', ()=>{
+        const myPPromise = new PPromise('initial value');
+        let external : any ='default value';
+
+        const x = myPPromise.pushThen((x : any) =>{external = x});
+        const y = myPPromise.then( (x : any )=>{x});
+        const z = x.then( (x : any )=>x);
+
+        expect(x instanceof PPromise).toEqual(true);
+        expect(y instanceof Promise).toEqual(true);
+        expect(z instanceof Promise).toEqual(true);
+
+    });
+
+    test.todo('a pending standard:deferred is breakable -- can have its dependency chain severed ');
     test.todo('call to PPromise.getDeferred returns PPromise instance of type standard')
 });
 
