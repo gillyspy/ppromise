@@ -5,20 +5,26 @@ import IllegalOperationError from "../errors/IllegalOperationError";
 
 describe('new PPromise of type solid returns a ppromise-looking object', () => {
 
-    const newSolidPromise = () => {
-        return new PPromise('resolved immediately', {
+    const newSolidPromise = (value : any = 'resolved immediately') => {
+        return new PPromise(value , {
             type: ppTypes.SOLID
         });
     }
 
-    test('call the constructor with a static string returns a PPromise that is immediately resolved', () => {
-        const myPPromise = newSolidPromise();
+    test('call the constructor with a static string is equivalent to calling PPromise.resolve statically with a string', () => {
+        const value = 'resolved immediately';
+        const myStaticPPromise = PPromise.resolve(value )
+        const myPPromise = newSolidPromise( value );
+
+        expect(myStaticPPromise.isFulfilled).toBe(true);
+        expect(myStaticPPromise.isResolved).toBe(true);
+        expect(myStaticPPromise.isPending).toBe(false);
+        expect(myStaticPPromise.isRejected).toBe(false);
         expect(myPPromise.isFulfilled).toBe(true);
         expect(myPPromise.isResolved).toBe(true);
         expect(myPPromise.isPending).toBe(false);
         expect(myPPromise.isRejected).toBe(false);
-        expect(myPPromise.resolve()).toEqual('resolved immediately');
-
+        expect(myPPromise.result).toEqual(myStaticPPromise.result);
     });
 
     test('solid PPromise is unbreakable by default', () => {

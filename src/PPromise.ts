@@ -29,6 +29,7 @@ class PPromise {
     constructor(callback: Function);
     constructor(promise: Promise<any>);
     constructor(value: any, options?: optionsType);
+    constructor(options?: optionsType);
     constructor(callback: Function, value: any, options?: optionsType);
     constructor(promise: Promise<any>, value: any, options?: optionsType);
     constructor(...args: any[]) {
@@ -41,6 +42,11 @@ class PPromise {
         });
         this.promise = this._promise;
 
+        if( args.length && typeof args[args.length - 1 ] === 'object'){
+            this.options = args[args.length-1] as optionsType;
+        }
+
+            //TODO: remove this ...redudant?
         if (typeof args[1] === 'object') {
             this.options = args[1] as optionsType;
         }
@@ -131,8 +137,8 @@ class PPromise {
         return this._value;
     }
 
-    set result(value: any) {
-        //do nothing
+    get type() : ppTypes {
+        return this._type;
     }
 
     set promise(promise: Promise<promiseCb>) {
@@ -184,12 +190,11 @@ class PPromise {
             this._isResolved = this._isFulfilled;
             this._isPending = false;
             this._isRejected = false;
-            this.result = this._value;
             if (this._nativeResolve)
                 this._nativeResolve(this._value)
-        } else {
-            this.result = this._value;
         }
+        //this.result = this._value;
+
         return this.result;
     }
 
