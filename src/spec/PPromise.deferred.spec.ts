@@ -22,6 +22,17 @@ describe( 'Deferred Pattern', ()=>{
         myPPromise.resolve();
         await myPPromise.promise;
         expect(myPPromise.result).toEqual('lonely string');
+    });
+
+    test('a pending standard:deferred can be updated and will resolve with updated value',async ()=>{
+        const myPPromise = new PPromise('initial value');
+        expect(myPPromise.result).toEqual(undefined);
+        expect(myPPromise.isFulfilled).toEqual(false);
+        myPPromise.resolve('different value');
+        await myPPromise.promise;
+        expect(myPPromise.result).toEqual('different value');
+        myPPromise.resolve('post resolve value will fail');
+        expect(myPPromise.result).not.toEqual('post resolve value will fail');
     })
 
     test.todo('call to PPromise.getDeferred returns PPromise instance of type standard')
