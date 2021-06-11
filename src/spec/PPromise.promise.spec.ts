@@ -1,0 +1,95 @@
+import PPromise from '../PPromise';
+import {ppTypes, optionsType} from '../Types'
+import IllegalOperationError from "../errors/IllegalOperationError";
+
+
+describe('new PPromise of type solid returns a ppromise-looking object', () => {
+
+    const newSolidPromise = () => {
+        return new PPromise('resolved immediately', {
+            type: ppTypes.SOLID
+        });
+    }
+
+    test('call the constructor with a static string returns a PPromise that is immediately resolved', () => {
+        const myPPromise = newSolidPromise();
+        expect(myPPromise.isFulfilled).toBe(true);
+        expect(myPPromise.isResolved).toBe(true);
+        expect(myPPromise.isPending).toBe(false);
+        expect(myPPromise.isRejected).toBe(false);
+        expect(myPPromise.resolve()).toEqual('resolved immediately');
+
+    });
+
+    test('solid PPromise is unbreakable by default', () => {
+        const myPPromise = newSolidPromise();
+        expect(myPPromise.isUnbreakable).toBe(true);
+    })
+
+    test('new (solid) PPromise as same methods as a normalPromise', () => {
+        const normalPromise = new Promise(() => {
+        });
+        const myPPromise = newSolidPromise();
+
+        expect(typeof myPPromise.then).toEqual('function');
+        expect(typeof normalPromise.then).toEqual('function');
+
+        expect(typeof myPPromise.catch).toEqual('function');
+        expect(typeof normalPromise.catch).toEqual('function');
+
+        expect(typeof myPPromise.finally).toEqual('function');
+        expect(typeof normalPromise.finally).toEqual('function');
+
+    });
+
+    test('new solid promise can be provided with a resolve function ',()=>{
+          const myPPromise = new PPromise((resolve:Function)=>{ resolve() }, {
+            type: ppTypes.SOLID
+        });
+          expect(myPPromise instanceof PPromise).toBe(true);
+
+    })
+
+    test('statically calling resolve will create a solid,fulfilled PPromise', async ()=>{
+        const myPPromise = PPromise.resolve(true);
+        expect(myPPromise instanceof PPromise).toBe(true);
+        expect( myPPromise instanceof Promise).toBe(false);
+        expect( myPPromise.promise instanceof Promise).toBe(true);
+        const result = await myPPromise.promise;
+        expect(result).toEqual(true);
+    });
+
+    test('previously instantiated (solid) PPromise cannot be resolved early by PPromise',async ()=>{
+        let externalResolve :Function;
+        externalResolve = (x :any) =>{};
+        let cb = (resolve : Function, reject : Function)=>{
+            externalResolve = resolve;
+        }
+
+        const solidPPromise = new PPromise( cb, {
+            type : ppTypes.SOLID
+        });
+        expect(solidPPromise.isFulfilled).toEqual(false);
+
+        expect(()=>{
+            solidPPromise.resolve('this should throw an error')
+        }).toThrow(IllegalOperationError);
+        externalResolve('this should force a resolve');
+        console.log(solidPPromise);
+        await solidPPromise.promise;
+        expect(solidPPromise.isFulfilled).toEqual(true);
+
+        expect(solidPPromise.result).toEqual('this should force a resolve');
+
+
+    });
+
+    test.todo('PPromise has a promise property to access the native promise')
+
+    test.todo('calls to then are resolved on appropriate event loop iteration');
+
+    test.todo('an already resolved PPromise will ...');
+
+
+
+});
