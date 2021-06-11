@@ -1,5 +1,6 @@
 import {optionsType, ppTypes} from './Types'
 import IllegalOperationError from "./errors/IllegalOperationError";
+import pp = jasmine.pp;
 
 interface promiseCb {
     (resolve: Function, reject: Function): void;
@@ -42,11 +43,11 @@ class PPromise {
         });
         this.promise = this._promise;
 
-        if( args.length && typeof args[args.length - 1 ] === 'object'){
-            this.options = args[args.length-1] as optionsType;
+        if (args.length && typeof args[args.length - 1] === 'object') {
+            this.options = args[args.length - 1] as optionsType;
         }
 
-            //TODO: remove this ...redudant?
+        //TODO: remove this ...redudant?
         if (typeof args[1] === 'object') {
             this.options = args[1] as optionsType;
         }
@@ -63,7 +64,10 @@ class PPromise {
 
         if (!(PPromise.isThisAPromise(args[0]) || PPromise.isThisACallback(args[0]))) {
             console.log('first arg is definitely a value');
-            this.setValueAndResolveImmediately(args[0]);
+            this._value = args[0];
+            if (this._type !== ppTypes.STANDARD) {
+                this.setValueAndResolveImmediately(args[0]);
+            }
         }
 
     }
@@ -134,10 +138,12 @@ class PPromise {
     }
 
     get result(): any {
-        return this._value;
+        if(!this._isPending ){
+            return this._value;
+        }
     }
 
-    get type() : ppTypes {
+    get type(): ppTypes {
         return this._type;
     }
 
@@ -176,11 +182,14 @@ class PPromise {
         });
     }
 
-    resolve(value ?: any): any {
+    resolve(...values : any[]): any {
         if (this._type === ppTypes.SOLID)
             throw new IllegalOperationError('resolve cannot be forced on ' + ppTypes.SOLID);
 
-        return this._resolve(value);
+        if( values.length)
+            return this._resolve(values[0])
+
+        return this._resolve();
     }
 
     private _resolve(...values: any): any {

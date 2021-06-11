@@ -13,12 +13,16 @@ describe( 'Deferred Pattern', ()=>{
     test('default type is standard', ()=>{
         const myPPromise = new PPromise();
         expect(myPPromise.type).toEqual(ppTypes.STANDARD);
-    })
+    });
 
-        /*with a string will establish that string as resolve value', ()=>{
+    test('constructed with a string will establish that string as resolve value but resolve is deferred', async()=>{
         const myPPromise = new PPromise('lonely string');
-        expect(myPPromise)
-    })*/
+        expect(myPPromise.result).toEqual(undefined);
+        expect(myPPromise.isFulfilled).toEqual(false);
+        myPPromise.resolve();
+        await myPPromise.promise;
+        expect(myPPromise.result).toEqual('lonely string');
+    })
 
     test.todo('call to PPromise.getDeferred returns PPromise instance of type standard')
 });
