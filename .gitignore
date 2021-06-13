@@ -27,5 +27,4 @@ Thumbs.db
 .settings
 .tmproj
 *.esproj
-/dist/
 docs/
