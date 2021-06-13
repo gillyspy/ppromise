@@ -10,6 +10,6 @@ type optionsType = {
     type? : ppTypes;
 }
 
-type resolveRejectArgs = [any, any];
+type resolveRejectArgs = [any, any?];
 
 export {ppTypes,optionsType,resolveRejectArgs}

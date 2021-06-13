@@ -1,18 +1,56 @@
 import PPromise from '../PPromise'
-import {ppTypes, optionsType} from '../Types'
+import {ppTypes, optionsType,resolveRejectArgs} from '../Types'
 import IllegalOperationError from "../errors/IllegalOperationError";
 import InvalidDefinitionError from "../errors/InvalidDefinitionError";
 
-describe('Given All PPromise Types', ()=>{
+describe('Given All PPromise Types', () => {
 
-    test('0 arguments means you get a fluid type',  () => {
+    test('0 arguments means you get a fluid type', () => {
         const myPPromise = new PPromise();
         expect(myPPromise.type).toEqual(ppTypes.FLUID);
     });
 
-    test.todo(' if there is only 1 arguments of type object assume it is an options object');
+    /* not sure how to test this as it correctly fails during compilation
+    * but as such no error is caught by Jest
+    */
+    /*
+    test(' if there is only 1 argument and it is of type object then treat it as an options object or error', () => {
+        expect(() => {
+            try {
+                const badOptionsPPromise = new PPromise({
+                    fake: 'fake'
+                });
+            } catch (e) {
+                console.log(e)
+            }
+        }).toThrow(Error);
 
-    test.todo('value array has arg 0 as resolve action and arg 1 is for reject');
+        const goodOptionsPromise =  new PPromise({  });
+        expect(goodOptionsPromise.isPending).toEqual(true);
+    });
+
+     */
+
+    /* similar problem to above
+    test('if there are 2 arguments of type object then throw a type error', () => {
+        const badPPromise = new PPromise({
+            fake: 'fake'
+        }, {
+            fake: 'fake'
+        });
+        expect(badOptionsPPromise.isPending).toEqual(true);
+    });*/
+
+    test('value array has arg 0 as resolve action and arg 1 is for reject', async()=>{
+        const resolvePPromise = new PPromise( ['for resolve', 'for reject']);
+        const rejectPPromise = new PPromise( ['for resolve', 'for reject']);
+
+        await resolvePPromise.resolve();
+        expect(resolvePPromise.isFulfilled).toEqual(true);
+
+        await rejectPPromise.reject();
+        expect(rejectPPromise.isFulfilled).not.toEqual(true);
+    });
 
     test('constructed with a string will establish that string as resolve value', async () => {
         const myPPromise = new PPromise(['lonely string']);
@@ -23,11 +61,13 @@ describe('Given All PPromise Types', ()=>{
         expect(myPPromise.result).toEqual('lonely string');
     });
 
-    test.todo('because of the event loop... resolve can only be called once')
+    test('because of the event loop... resolve can only be honored the first time called', async()=>{
+        const myPPromise = new PPromise(['original value', 'for reject']);
+        await myPPromise.resolve();
+        await myPPromise.resolve('impossible value');
+        expect(myPPromise.result).toEqual('original value');
+    })
     /***
      * if a function is passed as the value then
      */
-
-
-
 })
