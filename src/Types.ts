@@ -1,12 +1,15 @@
 enum ppTypes {
     'SOLID' = 'solid:promise',
-    'FLUID' = 'fluid:deception',
-    'STANDARD' = 'standard:deferred'
+    'FLUID' = 'fluid:deferred',
+    'GAS' = 'gas:deception'
 }
 
 type optionsType = {
-    isUnbreakable? : boolean
-    type? : ppTypes
+    name? : string;
+    isUnbreakable? : boolean;
+    type? : ppTypes;
 }
 
-export {ppTypes,optionsType}
+type resolveRejectArgs = [any, any];
+
+export {ppTypes,optionsType,resolveRejectArgs}

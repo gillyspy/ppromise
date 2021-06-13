@@ -3,7 +3,7 @@ import {ppTypes, optionsType} from '../Types'
 import IllegalOperationError from "../errors/IllegalOperationError";
 
 
-describe('new PPromise of type solid returns a ppromise-looking object', () => {
+describe('Given a new PPromise of type solid', () => {
 
     const newSolidPromise = (value : any = 'resolved immediately') => {
         return new PPromise(value , {
@@ -88,6 +88,24 @@ describe('new PPromise of type solid returns a ppromise-looking object', () => {
         expect(solidPPromise.result).toEqual('this should force a resolve');
 
 
+    });
+
+    test('a function is passed in is executed immediately just as in a standard promise',async()=>{
+        let myValueIsAssigned = false;
+        newSolidPromise( ()=>{
+            myValueIsAssigned =  true; //'assigned without PPromise.resolve';
+        });
+        await newSolidPromise;
+        expect(myValueIsAssigned).not.toEqual(false);
+    });
+
+    test( 'an array of functions is passed in the first is called by the resolve', async()=>{
+       let myValueIsAssigned = false;
+        newSolidPromise( [()=>{
+           myValueIsAssigned =  true; //'assigned without PPromise.resolve';
+       }]) ;
+        await newSolidPromise;
+        expect(myValueIsAssigned).not.toEqual(false);
     });
 
     test.todo('PPromise has a promise property to access the native promise')

@@ -1,75 +1,120 @@
-import {optionsType, ppTypes} from './Types'
+import {optionsType, ppTypes, resolveRejectArgs} from './Types'
 import IllegalOperationError from "./errors/IllegalOperationError";
-import pp = jasmine.pp;
+import InvalidDefinitionError from "./errors/InvalidDefinitionError";
 
 interface promiseCb {
     (resolve: Function, reject: Function): void;
 }
 
 class PPromise {
-    private _type: ppTypes = ppTypes.STANDARD;
+    readonly name? : string;
+    private _type: ppTypes = ppTypes.FLUID;
     private _isFulfilled: boolean = false;
     private _isPending: boolean = true;
     private _isRejected: boolean = false;
     private _isResolved: boolean = false;
     private _value: any;
+    private _reason?: string | Error;
+    private _Chain?: PPromise;
+    private _isTriggered : boolean = false;
     private _isUnbreakable: boolean = true;
-    private options: optionsType = {
-        isUnbreakable: true,
-        type: ppTypes.STANDARD
-    };
+    private _nativeResolve?: Function;
+    private _nativeReject?: Function;
     private _promise: Promise<promiseCb>;
-    private _nativeResolve: Function = (x: any) => {
+    private options: optionsType = {
+        name: this.name,
+        isUnbreakable: this._isUnbreakable,
+        type: ppTypes.FLUID
     };
-    private _nativeReject: Function = (x: any) => {
-    };
-    private _resolveValueCache: any;
-    private _rejectMessageCache: any;
 
+  //  private _resolveValueCache: any;
+  //  private _rejectMessageCache: any;
+
+    /* constructor(private options : optionsType = {
+         name: 'unknown',
+         isUnbreakable: true,
+         type: ppTypes.FLUID
+     } );*/
     constructor();
-    constructor(callback: Function);
-    constructor(promise: Promise<any>);
-    constructor(value: any, options?: optionsType);
-    constructor(options?: optionsType);
-    constructor(callback: Function, value: any, options?: optionsType);
-    constructor(promise: Promise<any>, value: any, options?: optionsType);
+    constructor(cbOrPromiseOrValuesOrOptions: Function | Promise<any> | resolveRejectArgs | optionsType | object);
+    constructor(cbOrPromiseOrValuesOrOptions: Function | Promise<any> | resolveRejectArgs | object, opts: optionsType);
+    //constructor(values: callbackArgs, options?: object );
+    //constructor(options?: object);
+    //constructor(callback: Function, value: any, options?: object );
+    //constructor(promise: Promise<any>, value: any, options?: object);
     constructor(...args: any[]) {
-        this.initStates();
-        this._type = ppTypes.STANDARD;
+        if (args.length > 2) throw new InvalidDefinitionError('constructor');
 
-        this._promise = PPromise.createNativePromise((resolve, reject) => {
-            this._nativeResolve = resolve;
-            this._nativeReject = reject;
-        });
-        this.promise = this._promise;
+        //deal with options argument first
+        if (args.length === 2)
+            //options has to be the second one
+            this.options = this.parseOptions(args.pop());
+        //args.length === 1
 
-        if (args.length && typeof args[args.length - 1] === 'object') {
-            this.options = args[args.length - 1] as optionsType;
+        if (args.length === 1 && !Array.isArray(args[0]) && typeof args[0] === 'object')
+            this.options = this.parseOptions(args.pop());
+        //args.length = 0
+
+        const that = this;
+        //default callback
+        let callback = (resolve: Function, reject: Function) => {
+            that._nativeResolve = resolve;
+            that._nativeReject = reject;
+        };
+
+        if (args.length === 1) {
+            let cbOrPromiseOrValues = args[0];
+            if (cbOrPromiseOrValues instanceof Promise)
+                if (this._type === ppTypes.SOLID) {
+                    // Promises for SOLID can be substituted straight in more-or-less
+                    this._promise = cbOrPromiseOrValues;
+                } else {
+                    //TODO: deal with promises
+                }
+
+            if (typeof cbOrPromiseOrValues === 'function') {
+                if (this._type !== ppTypes.SOLID) {
+                    this._promise = new Promise(cbOrPromiseOrValues);
+                } else {
+                    //TODO: deal with promise
+                }
+            }
+
+            if (Array.isArray(cbOrPromiseOrValues)) {
+                this._value = cbOrPromiseOrValues[0];
+                this._reason = cbOrPromiseOrValues[1];
+                callback = callback.bind(this);
+                this._promise = PPromise.createNativePromise(callback);
+            }
         }
 
-        //TODO: remove this ...redudant?
-        if (typeof args[1] === 'object') {
-            this.options = args[1] as optionsType;
-        }
+        this._promise = PPromise.createNativePromise(callback.bind(this));
 
         //apply options
         if (typeof this.options.type !== 'undefined') this._type = this.options.type;
         if (typeof this.options.isUnbreakable !== 'undefined') this._isUnbreakable = this.options.isUnbreakable;
+        if (typeof this.options.name !== 'undefined') this.name = this.options.name;
 
-        if (PPromise.isThisACallback(args[0])) {
-            const cb = this.makeCallback(args[0]);
-            console.log(cb)
-            this._promise = PPromise.createNativePromise(cb.bind(this));
+        this.initStates();
+
+        if (this._type === ppTypes.GAS && !this.isUnbreakable) {
+            this.createChain();
         }
+    }
 
-        if (!(PPromise.isThisAPromise(args[0]) || PPromise.isThisACallback(args[0]))) {
-            console.log('first arg is definitely a value');
-            this._value = args[0];
-            if (this._type !== ppTypes.STANDARD) {
-                this.setValueAndResolveImmediately(args[0]);
-            }
-        }
+    private parseOptions(options: any): optionsType {
+        if (typeof options === 'undefined') return this.options;
 
+        options = options as optionsType;
+        if (options.type === ppTypes.GAS && options.isUnbreakable === true)
+            throw new InvalidDefinitionError('isUnbreakable',
+                `Must be ${!this.isUnbreakable} for type ${options.type}`);
+
+        if (options.type !== ppTypes.GAS && options.isUnbreakable === false)
+            throw new InvalidDefinitionError('isUnbreakable',
+                `Must be ${!this.isUnbreakable} for type ${options.type}`);
+
+        return options;
     }
 
     private proxyValueFromOriginalResolve(...values: any): void {
@@ -81,53 +126,28 @@ class PPromise {
         this._resolve();
     }
 
-    private makeCallback(callback: Function): promiseCb {
-        const resolveCb = (resolve: any) => {
-            this._nativeResolve = resolve;
-        };
-        const rejectCb = (reject: any) => {
-            this._nativeReject = reject;
-        };
+    private createChain(): void {
+        if (this.isUnbreakable) return;
 
-        const _resolve = this._resolve.bind(this);
-        const _reject = this._resolve.bind(this); //TODO:  2nd arg should support reject
-
-        return (resolve, reject) => {
-            //callback( resolveCb, rejectCb );
-            callback(_resolve, _reject);
-            this._nativeResolve = resolve;
-            this._nativeReject = reject;
-        }
-
-        /*
-         this.#callback = (resolve, reject) => {
-        cb(_cb.resolve, _cb.reject);
-        if (that.type !== solid) {
-          _arg.resolve = resolve;
-          _arg.reject = reject;
-        }
-         */
+        this._Chain = new PPromise({
+            name: 'Internal Chain',
+            type: ppTypes.FLUID,
+            isUnbreakable: true
+        });
     }
 
-    private static isThisACallback(candidate: any): boolean {
-        console.log({isThisACallback: candidate})
-        if (typeof candidate === 'function') return true;
-        if (Array.isArray(candidate) && candidate.length > 0) {
-            return PPromise.isThisACallback(candidate[0])
-        }
-        return false;
+    private linkAnyChains(): void {
+        if( !this._Chain ) return
 
+        //TODO: do we need to bind resolve/reject?
+        const resolve = this.chain._resolve.bind(this.chain);
+        const reject = this.chain._reject.bind(this.chain);
+        this.promise.then(resolve, reject);
     }
 
-    private static isThisAPromise(candidate: any): boolean {
-        console.log({isThisAPromise: candidate})
-        if (candidate instanceof Promise) return true;
-        if (Array.isArray(candidate) && candidate.length > 0) {
-            return PPromise.isThisAPromise(candidate[0])
-        }
-        return false;
+    private get chain(): PPromise {
+        return this._Chain!
     }
-
     private setValueAndResolveImmediately(value: any): void {
         //this._value = value;
         this._resolve(value);
@@ -138,7 +158,7 @@ class PPromise {
     }
 
     get result(): any {
-        if(!this._isPending ){
+        if (!this._isPending) {
             return this._value;
         }
     }
@@ -147,12 +167,13 @@ class PPromise {
         return this._type;
     }
 
-    set promise(promise: Promise<promiseCb>) {
-        //do nothing
-    }
-
     get promise(): Promise<promiseCb> {
-        return this._promise;
+        if (this.chain instanceof PPromise) return this.chain.promise;
+
+        return this._promise; // also implies unbreakable
+    }
+    get isTriggered(){
+        return this._isTriggered;
     }
 
     get isFulfilled() {
@@ -182,29 +203,53 @@ class PPromise {
         });
     }
 
-    resolve(...values : any[]): any {
+    resolve(...values: any[]): any {
         if (this._type === ppTypes.SOLID)
             throw new IllegalOperationError('resolve cannot be forced on ' + ppTypes.SOLID);
 
-        if( values.length)
+        if (values.length)
             return this._resolve(values[0])
 
         return this._resolve();
     }
 
     private _resolve(...values: any): any {
-        if (!this._isResolved) {
-            this._value = values.length ? values[0] : this._value;
-            this._isFulfilled = true;
-            this._isResolved = this._isFulfilled;
-            this._isPending = false;
-            this._isRejected = false;
-            if (this._nativeResolve)
-                this._nativeResolve(this._value)
-        }
-        //this.result = this._value;
+        let callbackForThen, resolveValue;
 
-        return this.result;
+        if (!this.isResolved && !this.isTriggered) {
+            if (typeof this._value === 'function') {
+                callbackForThen = this.makeFulfillmentCallback( this._value );
+                resolveValue = values[0];
+            } else {
+                this._value = values.length ? values[0] : this._value;
+                resolveValue = this._value;
+                callbackForThen = this.makeFulfillmentCallback();
+            }
+            this._promise = this._promise.then( callbackForThen )
+
+            this.linkAnyChains();
+            this._nativeResolve!(this._value);
+        }
+        return this;
+    }
+
+    private makeFulfillmentCallback( fn? : Function) : any {
+        const that = this;
+        return (...v : any) => {
+            that._isFulfilled = true;
+            that._isResolved = true;
+            that._isPending = false;
+            that._isRejected = false;
+            return fn ? fn(v[0]) : v[0];
+        };
+    }
+
+    reject(...values: any[]): any {
+        //TODO:
+    }
+
+    private _reject(...values: any): any {
+        return;
     }
 
     private initStates() {
@@ -218,23 +263,44 @@ class PPromise {
         //  return new PPromise(...args);
     }
 
-    pushThen(...args : any) : PPromise{
+    sever(): PPromise {
+        if (this.isUnbreakable)
+            throw new IllegalOperationError(`You cannot sever a ${this.options.type}`);
+
+        if (typeof this.chain !== 'undefined') {
+            //new chain
+            this.createChain();
+        }
+        return this; //include case: not-unbreakable
+    }
+
+    severSafely(): PPromise {
+        try {
+            this.sever();
+        } catch (e) {
+            console.log(e);
+        }
+        return this;
+    }
+
+    pushThen(...args: any): PPromise {
         this.then(args);
         return this;
     }
 
     then(...args: any): Promise<any> {
-        return this.promise.then( ...args );
+        console.log('then called by ', this.options.name);
+        if (this.isUnbreakable) return this.promise.then(...args);
+        return this.chain.then(...args)
     }
 
     catch(...args: any): Promise<any> {
-        return this.promise.catch( ...args );
+        return this.promise.catch(...args);
     }
 
     finally(...args: any): Promise<any> {
-        return this.promise.finally( ...args );
+        return this.promise.finally(...args);
     }
-
 }
 
 export default PPromise;
