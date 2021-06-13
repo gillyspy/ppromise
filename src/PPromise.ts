@@ -7,8 +7,9 @@ interface promiseCb {
 }
 
 class PPromise {
-    readonly name?: string;
+    readonly name?: string|symbol;
     private _type: ppTypes = ppTypes.FLUID;
+    private _secret : symbol = Symbol('secret');
     private _isFulfilled: boolean = false;
     private _isPending: boolean = true;
     private _isRejected: boolean = false;
@@ -56,18 +57,16 @@ class PPromise {
         //args.length = 0
 
         const that = this;
-        //default callback
-        let callback = (resolve: Function, reject: Function) => {
-            that._nativeResolve = ()=> {
-                resolve;
-            }
-            that._nativeReject = reject;
-        };
+
+        let callback;
 
         //apply options
         if (typeof this.options.type !== 'undefined') this._type = this.options.type;
         if (typeof this.options.isUnbreakable !== 'undefined') this._isUnbreakable = this.options.isUnbreakable;
         if (typeof this.options.name !== 'undefined') this.name = this.options.name;
+
+        if( this._type === ppTypes.GAS )
+            this._isUnbreakable = false;
 
         //init states
         this.initStates();
@@ -84,30 +83,26 @@ class PPromise {
                 }
 
             if (typeof cbOrPromiseOrValues === 'function') {
-                if (this._type !== ppTypes.SOLID) {
                     callback = cbOrPromiseOrValues;
-                } else {
-                    //TODO: deal with promise
-                }
             }
 
             if (Array.isArray(cbOrPromiseOrValues)) {
                 this._value = cbOrPromiseOrValues[0];
                 this._reason = cbOrPromiseOrValues[1];
-                callback = callback.bind(this);
+                callback = callback;
                 //TODO: seems pointless to pass in a static reject value for a SOLID
             }
         }
 
-        this._promise = PPromise.createNativePromise(callback.bind(this));
 
-        const what = async function(){
-            console.log('waiting for resolve', that.name);
-            await that._promise;
-            console.log('after th resolve')
-        }
-        console.log('continuing');
-        what();
+        if (!callback)
+            callback = (resolve: Function, reject: Function) => {
+                that._nativeResolve = (v: any) => {
+                    resolve(v);
+                }
+                that._nativeReject = reject;
+            };
+        this._promise = PPromise.createNativePromise(callback.bind(this));
 
         if (this._type === ppTypes.SOLID)
             this._resolve(this._value);
@@ -132,20 +127,11 @@ class PPromise {
         return options;
     }
 
-    private proxyValueFromOriginalResolve(...values: any): void {
-        if (values.length === 0) return this._resolve();
-
-        if (typeof this._value === 'undefined')
-            this._value = values[0];
-
-        this._resolve();
-    }
-
     private createChain(): void {
         if (this.isUnbreakable) return;
-
+        const secret = this._secret;
         this._Chain = new PPromise({
-            name: 'Internal Chain',
+            name: secret,
             type: ppTypes.FLUID,
             isUnbreakable: true
         });
@@ -157,16 +143,11 @@ class PPromise {
         //TODO: do we need to bind resolve/reject?
         const resolve = this.chain._resolve.bind(this.chain);
         const reject = this.chain._reject.bind(this.chain);
-        this.promise.then(resolve, reject);
+        this._promise.then(resolve, reject);
     }
 
     private get chain(): PPromise {
         return this._Chain!
-    }
-
-    private setValueAndResolveImmediately(value: any): void {
-        //this._value = value;
-        this._resolve(value);
     }
 
     private static createNativePromise(callback: promiseCb): Promise<promiseCb> {
@@ -246,7 +227,8 @@ class PPromise {
             this._promise = this._promise.then(callbackForThen)
 
             this.linkAnyChains();
-            this._nativeResolve!(resolveValue);
+            //TODO: native resolve and then above is only needed if the promises was constructed from a callback
+            this._nativeResolve?.(resolveValue);
         }
         return this;
     }
@@ -288,7 +270,7 @@ class PPromise {
             this._promise = this._promise.catch(callbackForCatch);
 
             this.linkAnyChains();
-            this._nativeReject!(rejectValue);
+             this._nativeReject?.(rejectValue);
         }
         return this;
     }

@@ -98,31 +98,6 @@ describe('Given a new PPromise of type solid', () => {
 
 
     });
-    test('Deferred pattern passed in as a callback is not detectable by PPromise', async () => {
-        let externalResolve: Function;
-        let crazyString = 'this should stillforce a resolve because PPromise does not know this is a deffered pattern'
-        externalResolve = (x?: any) => {
-            console.log('inside external Resolve', x);
-        };
-        let cb = (resolve: Function, reject: Function) => {
-            console.log('solidPPromise is making a callback');
-            externalResolve = resolve;
-        }
-
-        const solidPPromise = new PPromise(cb, {
-            name : 'solidPPromise',
-            type: ppTypes.SOLID
-        });
-        expect(solidPPromise.isFulfilled).toEqual(false);
-
-        await solidPPromise.promise; //this gets stuck?
-        externalResolve(crazyString)
-        console.log(solidPPromise);
-        await solidPPromise.promise;
-        expect(solidPPromise.isFulfilled).toEqual(true);
-
-        expect(solidPPromise.result).toEqual(crazyString);
-    });
 
     test('a function is passed in is executed immediately just as in a standard promise', async () => {
         let myValueIsAssigned = false;
@@ -132,6 +107,43 @@ describe('Given a new PPromise of type solid', () => {
         await newSolidPromise;
         expect(myValueIsAssigned).not.toEqual(false);
     });
+
+    test('this test will take >5s because PPromises constructed from callbacks cannot force resolve',
+        async () => {
+
+            let externalResolve: Function;
+            let maxTimeToWait = 6000, minTimeToWait = 5000, duration = 0;
+            let startTime = new Date();
+            const calcDuration = (startTime: any): number => {
+                let end = new Date();
+                return Math.abs((+end - +startTime))
+            };
+            externalResolve = (x?: any) => {
+                //
+            };
+
+            const solidPPromise = new PPromise(
+                (resolve: Function, reject: Function) => {
+                    console.log('solidPPromise is making a callback');
+                    externalResolve = resolve;
+                }, {
+                    name: 'solidPPromise',
+                    type: ppTypes.SOLID
+                });
+
+            await new Promise((resolve: Function, reject): void => {
+                setTimeout((): void => {
+                    externalResolve();
+                    duration = calcDuration(startTime);
+                    resolve();
+                }, maxTimeToWait);
+            });
+            await solidPPromise.promise;
+            expect(solidPPromise.isFulfilled).toEqual(true);
+            expect(duration).toBeGreaterThan(minTimeToWait);
+        },
+        20000
+    );
 
     test('an array of functions is passed in the first is called by the resolve', async () => {
         let myValueIsAssigned = false;
