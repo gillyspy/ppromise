@@ -5,7 +5,7 @@ enum ppTypes {
 }
 
 type optionsType = {
-    name? : string|symbol;
+    name? : string;
     isUnbreakable? : boolean;
     type? : ppTypes;
     secret? : string | symbol;

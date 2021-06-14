@@ -7,7 +7,7 @@ interface promiseCb {
 }
 
 class PPromise {
-    readonly name?: string | symbol;
+    readonly name?: string;
     private _type: ppTypes = ppTypes.FLUID;
     private readonly _secret?: string | symbol;
     private _isFulfilled: boolean = false;
@@ -22,21 +22,13 @@ class PPromise {
     private _nativeResolve?: Function;
     private _nativeReject?: Function;
     private _promise: Promise<promiseCb>;
-    private options: optionsType = {
+    private readonly options: optionsType = {
         name: this.name,
         isUnbreakable: this._isUnbreakable,
         type: ppTypes.FLUID,
         secret: undefined
     };
 
-    //  private _resolveValueCache: any;
-    //  private _rejectMessageCache: any;
-
-    /* constructor(private options : optionsType = {
-         name: 'unknown',
-         isUnbreakable: true,
-         type: ppTypes.FLUID
-     } );*/
     constructor();
     constructor(cbOrPromiseOrValuesOrOptions: Function | Promise<any> | resolveRejectArgs | optionsType);
     constructor(cbOrPromiseOrValuesOrOptions: Function | Promise<any> | resolveRejectArgs | object, opts: optionsType);
@@ -96,7 +88,6 @@ class PPromise {
             }
         }
 
-
         if (!callback)
             callback = (resolve: Function, reject: Function) => {
                 that._nativeResolve = (v: any) => {
@@ -129,10 +120,10 @@ class PPromise {
         return options;
     }
 
-    private hasValidKey(matchingKey?: string | symbol) : boolean {
+    private hasValidKey(matchingKey?: string | symbol): boolean {
         if (!this.isSecured) return true;
 
-        if(typeof matchingKey === 'undefined') return false;
+        if (typeof matchingKey === 'undefined') return false;
 
         return matchingKey === this._secret;
     }
@@ -182,6 +173,10 @@ class PPromise {
 
     get isTriggered() {
         return this._isTriggered;
+    }
+
+    get isSettled() {
+        return this._isSettled;
     }
 
     get isFulfilled() {
@@ -244,8 +239,7 @@ class PPromise {
     private _resolve(...values: any): any {
         let callbackForThen, resolveValue;
 
-        if( this.isResolved || this.isTriggered )
-            return;
+        if (this.isSettled || this.isTriggered) return this;
 
         if (!this.isResolved && !this.isTriggered) {
             if (typeof this._value === 'function') {
@@ -317,6 +311,7 @@ class PPromise {
             that._isResolved = false;
             that._isPending = false;
             that._isRejected = true;
+            that._isSettled = true;
             that._reason = fn ? fn(v[0]) : v[0];
             return that._reason
         };
@@ -327,6 +322,7 @@ class PPromise {
         this._isPending = true;
         this._isRejected = false;
         this._isResolved = false;
+        this._isSettled = false;
     }
 
     static getDeferred(...args: any[]) {
