@@ -9,7 +9,6 @@ interface promiseCb {
 class PPromise {
     readonly name?: string;
     private _type: ppTypes = ppTypes.FLUID;
-    private readonly _secret?: string | symbol;
     private _isFulfilled: boolean = false;
     private _isPending: boolean = true;
     private _isRejected: boolean = false;
@@ -18,6 +17,8 @@ class PPromise {
     private _value: any;
     private _reason?: string | Error;
     private _Chain?: PPromise;
+    private readonly _secret?: symbol | string;
+    private readonly _chainSecret: string | symbol = Symbol('chain');
     private _isTriggered: boolean = false;
     private _isUnbreakable: boolean = true;
     private _nativeResolve?: Function;
@@ -131,11 +132,11 @@ class PPromise {
 
     private createChain(): void {
         if (this.isUnbreakable) return;
-        const secret = this._secret;
         this._Chain = new PPromise({
-            name: secret,
+            name: 'chain of ' + this.name,
             type: ppTypes.FLUID,
-            isUnbreakable: true
+            isUnbreakable: true,
+            secret: this._chainSecret
         });
     }
 

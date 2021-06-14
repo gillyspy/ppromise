@@ -83,9 +83,15 @@ describe('Given All PPromise Types', () => {
             secret : mySecret
         });
 
-        await myPPromise.resolve('updated Value but no key');
+        expect(  ()=>{
+            myPPromise.resolve('updated Value but no key');
+        }).toThrowError(IllegalOperationError);
         expect(myPPromise.isFulfilled).toBe(false);
-    })
+    });
+
+    test.todo('Calling resolve on an already triggered & pending PPromise is same as calling resolve on a solid promise');
+
+    test.todo('Calling resolve on a settle PPromise will ????');
     /***
      * if a function is passed as the value then
      */
