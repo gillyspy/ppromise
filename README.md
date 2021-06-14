@@ -3,7 +3,7 @@
 About Promise Types
 -------------------------------------------------------
 ### Solid aka Promise (solid:promise)
-type = solid
+type === solid
 essentially this is a standard promise that cannot be resolved externally (ie is NOT a deferred)
 this cannot be downgraded to either standard nor fluid
 * Promise pattern
@@ -16,7 +16,7 @@ this cannot be downgraded to either standard nor fluid
    * no key necessary as it is natively locked down
     
 ### Fluid aka Deferred  (fluid:deferred)
-type = fluid (default type)
+type === fluid (default type)
 this is a deferred anti-pattern, but the existing attached promises cannot be removed. fluid can
 be changed to a solid (but not to gas)
 
@@ -31,7 +31,7 @@ be changed to a solid (but not to gas)
     * accessible only to those with key
 
 ### Gas aka Deception (gas:deception)
-type = gas
+type === gas
 this is a deferred anti-pattern where the promises can be changed (removed or added).
 Gas can be transitions to a fluid or all the way to a solid
 
@@ -46,8 +46,11 @@ Gas can be transitions to a fluid or all the way to a solid
     * accessible only to those with key
     
 ### 1-way phase changes
-These changes are one-way for a reason. Your consumers should be able to count on an upper-bound of volatility. 
-If a solid could also be changed to a gas then consumers should then assume that every type is a gas
+#### impetus 
+These changes are one-way for a reason. Your consumers should be able to count on an upper-bound of 
+volatility. 
+If a solid could also be changed to a gas then consumers would have to assume that every type is a gas and that 
+would make the library useless. 
 
 #### Gas -> Fluid -> Solid
 consumers can rely upon this relationship
@@ -55,14 +58,16 @@ consumers can rely upon this relationship
 -------------------------------------------------------
 About "Upgrading".  Changing Types
 -------------------------------------------------------
-upgrading is a creation option
-when enabled it is one way (as mentioned)
+Upgrading is a creation option
+when enabled it is one way (as mentioned). 
+
+Settled PPromises are automatically converted to a solid type.
 
 -------------------------------------------------------
 About Unbreakable (and gas:deception )
 -------------------------------------------------------
 Unbreakable is a concept that affects how the root promise is related to its promise chain. 
-`isUnbreakable=false` is a property that only gases can have.  In fact `isUnbreakable` implies a type `gas:deception`
+`isUnbreakable===false` is a property that only gases can have.  In fact `isUnbreakable` implies a type `gas:deception`
 
 e.g.
 APromise.then().then().then()
@@ -70,12 +75,14 @@ APromise.then().then().then()
 With native Promises, once a chain is established, there is no reversing that.  Additionally, you can branch chains 
 from any point in the chain including from the root promise. However, This process is only additive. 
 
-A PPromise that is (a gas) unbreakable (`isUnbreakable=true`) behaves the same way. A PPromise `isUnbreakable` by 
-default 
-because the default type is `fluid:deferred` and that is part of it's nature  
+A PPromise that is (a fluid or solid) is unbreakable (`isUnbreakable === true`) behaves the same way. A PPromise 
+`isUnbreakable` by default because the default type is `fluid:deferred` and that is part of it's nature.  
 
-However, you can set `isUnbreakable=false` in the constructor options.  This option is a facade -- you can only set this
-for `type : GAS`, so it is technically redundant.  However, if you do not set the type explicity, but you set the 
+A settled promise of any type is unbreakable (`isUnbreakable === true`);
+
+However, you can set `isUnbreakable===false` in the constructor options.  This option is a facade -- you can only set 
+this
+for `type : GAS`, so it is technically redundant.  However, if you do not set the type explicitly, but you set the 
 `isUnbreakable:false` property then it will imply `type : GAS`.  see [#contructor] behaviour 
 <pre>
 PPromise({ isUnbreakable : false })
@@ -83,15 +90,17 @@ PPromise({ isUnbreakable : false })
 `isUnbreakfase === false` means that the head of the PPromise (the root promise) is internally separate from the chain
 network.  This chain is intended for internal use only.  
 
-Until the root promise is resolved or rejected then head/root is removable (via `.sever()`) from the chain.  
+Until the root (of a gas:deception type only) promise is settled then the head/root is removable (via `.sever()`) from 
+the chain.  
 A `sever()` will not return the chain to you, but you can choose to `sever('resolve')` or `sever('reject')`.  
-`sever` in all forms will return PPromise for chaining. e.g. 
+`sever` in all forms will return the "re-newed" PPromise (for continued) chaining. e.g. 
 <pre>
 //sever the chain and then resolve the head with newValue
 myPPromise.sever.resolve(newValue) 
 
 //sever the chain; resolve the chain; resolve the head with newValue; 
-myOtherPP.sever('resolve').resolve(newValue);
+myOtherPP.sever('resolve').resolve(newValue)
+   .then(value=>{ actOn(value)}) 
 
 //
 myLonglostPP
@@ -101,8 +110,8 @@ myLonglostPP
    .resolve();                   //resolve the root (with newerValue)
 </pre>
 
-Breaking the chain does not convert a PPromise to `isUnbreakable : true`.  The chain is replaced with a new, 
-zero-length chain.
+Severing the PPromise from the chain does not convert a PPromise to `isUnbreakable : true`.  Sever replaces the 
+chain with a new, zero-length chain.  
 
 Note that the PPromise instances above would have been instantiated with something equivalent to: 
 `PPromise({ isUnbreakable : false })`
@@ -122,7 +131,7 @@ You could use a `solid:promise` pattern which is the normal case
 You could use a `fluid:deferred` pattern to reject the promise which would notify the consumer to mitigate
 
 #### option: force a resolve
-You could use a `fluid:deferred` pattern to  resolve the promise which would notify the consumer to believe your 
+You could use a `fluid:deferred` pattern to resolve the promise which would notify the consumer to believe your 
 promise.  This case is very powerful because you can make the decision on when / what conditions to resolve AFTER 
 making the promise contract, and your consumers will believe you regardless. remember: with great power comes great 
 responsibility - but also -- those consumers might just be minions
@@ -134,8 +143,8 @@ this is the settling of the original promise .  The original promise remains unf
 out its purpose and potentially even pick up new minions.
 
 Consumers of your library can know the nature of the PPromise by inspecting properties. `isUnbreakable` property is 
-helpful boolean but the definitive property is `type`.  Pending promises behave differently and that can be 
-inspected via [#properties] like the `isPending` boolean.
+a helpful boolean for this. The definitive property is `type`.  Pending promises behave differently and that 
+can be inspected via [#properties] like the `isPending` boolean.
 <pre>
 //TODO: example
 </pre>
@@ -148,7 +157,7 @@ You can secure a PPromise instance during creation.
 A secured PPromise has certain methods and properties that behave slightly differently.  The biggest change is that 
 secured methods will take an extra argument for the secret/key.  When the key is not provided by default they will 
 fail / passthrough as silently as possible. i.e. the instance will be returned and no error will be thrown.  However,
-with an additional option `errorsWithoutKey=true` will cause an illegaloperationerror to be thrown.  
+with an additional option `errorsWithoutKey===true` will cause an illegaloperationerror to be thrown.  
 
 Properties that are secure will return null and a method will need to be used instead of a getter.
 
@@ -231,13 +240,21 @@ you can use any of these and in any combination...
 They will be applied to the native promises internally (ppromise.promise)
 
 -------------------------------------------------------
-Behaviour of a Pending PPromise
+Behaviour of a Pending PPromise and Resolve of such
 -------------------------------------------------------
-Only pending PPromises are subject to the  functionality of their types
+Only pending PPromises are subject to the functionality of their types.  e.g. You can only resolve a pending PPromise. 
 
-A settled PPromise cannot be resolved or rejected differently regardless of its type. 
+More specifically you can only `resolve` an `isPending === true` PPromise. 
 
-A settled PPromise cannot be severed regardless of its type.  
+However, a `resolve` is asynchronous.  Engines will NOT resolve Promises on the current event cycle.  There is a 
+state called `isTriggered` to help with this.  When a PPromise already `isTriggered || isSettled` then any additional 
+attempt to resolve it will be ignored an `IllegalOperationError`.
+
+i.e. 
+A settled|triggered PPromise cannot be resolved or rejected differently regardless of its type. 
+
+A settled|triggered PPromise cannot be severed regardless of its type.  
+
 
 -------------------------------------------------------
 Future Possibilities
