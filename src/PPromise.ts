@@ -14,6 +14,7 @@ class PPromise {
     private _isPending: boolean = true;
     private _isRejected: boolean = false;
     private _isResolved: boolean = false;
+    private _isSettled: boolean = false;
     private _value: any;
     private _reason?: string | Error;
     private _Chain?: PPromise;
@@ -286,7 +287,7 @@ class PPromise {
 
     private _reject(...values: any[]): PPromise {
         let callbackForCatch, rejectValue;
-        if (!this.isRejected && !this.isTriggered) {
+        if (!this.isSettled && !this.isTriggered) {
             if (typeof this._reason === 'function') {
                 callbackForCatch = this.makeRejectCallback(this._reason);
                 rejectValue = values[0];
