@@ -364,6 +364,7 @@ class PPromise {
         this._isRejected = false;
         this._isResolved = false;
         this._isSettled = false;
+        this._isTriggered = false;
     }
 
     static getDeferred(...args: any[]) {
@@ -389,6 +390,60 @@ class PPromise {
         }
         return this;
     }
+
+    upgradeType( type?: ppTypes ):void{
+        // no change
+        if( this._type === type ) return;
+
+        //impossible change
+        // SOLID to !SOLID
+        // !GAS to GAS
+        if( type === ppTypes.GAS || this._type === ppTypes.SOLID )
+            throw new IllegalOperationError(`Cannot downgrade ${this._type} to ${type}`);
+
+        //allowed change
+        if( type === ppTypes.FLUID && this._type === ppTypes.GAS ){
+            try {
+                //remove the chain
+                //--> don't think this is necessary
+
+                //set unbreakable = true
+                this._isUnbreakable = true;
+
+                //continue to allow deferred
+
+                //change the type
+                this._type = ppTypes.GAS;
+
+            }catch(e){
+                console.log(e);
+                throw new IllegalOperationError(`upgrade from ${this._type} to ${type} failed. See log`);
+            }
+        }
+
+         if( type === ppTypes.SOLID ){
+            try {
+                //remove the chain
+                //--> don't think this is necessary
+
+                //set unbreakable = true
+                this._isUnbreakable = true;
+
+                //disallow deferred
+                //resolve immediately
+                this._resolve();
+
+                //change the type
+                this._type = ppTypes.SOLID;
+
+            }catch(e){
+                console.log(e);
+                throw new IllegalOperationError(`upgrade from ${this._type} to ${type} failed. See log`);
+            }
+        }
+
+    }
+
 
     pushThen(...args: any): PPromise {
         this.then(args);

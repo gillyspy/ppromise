@@ -146,6 +146,27 @@ describe('Given a new PPromise of type solid', () => {
         expect(myValueIsAssigned).not.toEqual(false);
     });
 
+    test('PPromise type can not be downgraded from Solid -- throw error', async() => {
+        const myPPromise = new PPromise(['output'], {
+            name: 'resolvedLikeDeferred',
+            type: ppTypes.SOLID
+        });
+
+        expect(myPPromise.isTriggered).toEqual(true);
+        await myPPromise.promise;
+        expect(myPPromise.result).toEqual('output');
+        expect(myPPromise.isUnbreakable).toBe(true);
+        expect(() => {
+            myPPromise.upgradeType(ppTypes.GAS);
+        }).toThrow(IllegalOperationError);
+        expect(() => {
+            myPPromise.upgradeType(ppTypes.FLUID);
+        }).toThrow(IllegalOperationError);
+        expect(myPPromise.result).toEqual('output');
+        expect(myPPromise.isUnbreakable).toBe(true);
+        expect(myPPromise.type).toBe(ppTypes.SOLID);
+    });
+
     test.todo('PPromise has a promise property to access the native promise')
 
     test.todo('calls to then are resolved on appropriate event loop iteration');

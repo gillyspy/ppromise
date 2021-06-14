@@ -83,6 +83,41 @@ describe('fluid:deferred type', () => {
         }
     );
 
+    test('PPromises can be upgraded from Fluid to Solid', async () => {
+        const myPPromise = new PPromise(['output'], {
+            name: 'resolvedLikeDeferred',
+            type: ppTypes.FLUID
+        });
+        expect(myPPromise.type).toEqual(ppTypes.FLUID)
+        expect(myPPromise.result).toEqual(undefined);
+        expect(myPPromise.isUnbreakable).toBe(true);
+        myPPromise.upgradeType(ppTypes.SOLID);
+        expect(myPPromise.isUnbreakable).toBe(true);
+        await myPPromise.resolve();
+        expect(myPPromise.result).toBe('output');
+        expect(myPPromise.type).toEqual(ppTypes.SOLID)
+        expect(() => {
+            myPPromise.sever();
+        }).toThrow(IllegalOperationError);
+    });
+
+    test('PPromises can not be downgraded from Fluid -- throw error', () => {
+        const myPPromise = new PPromise(['output'], {
+            name: 'resolvedLikeDeferred',
+            type: ppTypes.FLUID
+        });
+
+        expect(myPPromise.result).toEqual(undefined);
+        expect(myPPromise.isUnbreakable).toBe(true);
+        expect(myPPromise.type).toEqual(ppTypes.FLUID);
+        expect(()=>{
+            myPPromise.upgradeType(ppTypes.GAS);
+        }).toThrow(IllegalOperationError);
+        expect(myPPromise.result).toEqual(undefined);
+        expect(myPPromise.isUnbreakable).toBe(true);
+        expect(myPPromise.type).toEqual(ppTypes.FLUID)
+    });
+
     test.todo('call to PPromise.getDeferred returns PPromise instance of type FLUID')
 });
 
