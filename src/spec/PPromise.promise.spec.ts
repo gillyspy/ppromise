@@ -79,24 +79,16 @@ describe('Given a new PPromise of type solid', () => {
         expect(result).toEqual(true);
     });
 
-    test('previously instantiated (solid) PPromise throws error when external resolve is attempted', async () => {
-        let externalResolve: Function;
-        externalResolve = (x: any) => {
-        };
-        let cb = (resolve: Function, reject: Function) => {
-            externalResolve = resolve;
-        }
-
-        const solidPPromise = new PPromise(cb, {
+    test('(solid) PPromise ignores calls to resolve or reject', async () => {
+        const solidPPromise = new PPromise(['resolution value'], {
             type: ppTypes.SOLID
         });
-        expect(solidPPromise.isFulfilled).toEqual(false);
-
-        expect(() => {
-            solidPPromise.resolve('this should throw an error')
-        }).toThrow(IllegalOperationError);
-
-
+        await solidPPromise.promise;
+        expect(solidPPromise.isFulfilled).toEqual(true);
+        expect(solidPPromise.result).toEqual('resolution value');
+        await solidPPromise.resolve('subsequent value');
+        expect(solidPPromise.result).not.toEqual('subsequent value');
+        expect(solidPPromise.result).toEqual('resolution value');
     });
 
     test('a function is passed in is executed immediately just as in a standard promise', async () => {

@@ -15,14 +15,16 @@ class PPromise {
     private _isResolved: boolean = false;
     private _isSettled: boolean = false;
     private _value: any;
+    private readonly _resolveCallback?: Function;
+    private readonly _rejectCallback?: Function;
     private _reason?: string | Error;
     private _Chain?: PPromise;
     private readonly _secret?: symbol | string;
     private readonly _chainSecret: string | symbol = Symbol('chain');
     private _isTriggered: boolean = false;
     private _isUnbreakable: boolean = true;
-    private _nativeResolve?: Function;
-    private _nativeReject?: Function;
+    private _nativeResolveProxy?: Function;
+    private _nativeRejectProxy?: Function;
     private _promise: Promise<promiseCb>;
     private readonly options: optionsType = {
         name: this.name,
@@ -79,12 +81,42 @@ class PPromise {
                 }
 
             if (typeof cbOrPromiseOrValues === 'function') {
-                callback = cbOrPromiseOrValues;
+                const cb = cbOrPromiseOrValues;
+                if (this._type === ppTypes.SOLID)
+                    callback = cbOrPromiseOrValues;
+                else
+                    callback = (nativeResolve: any, nativeReject: any) => {
+                        let calledOnce = false;
+                        if (calledOnce) {
+                            console.log('subsequent call to resolve ignored.')
+                            return;
+                        }
+                        this._nativeResolveProxy = (deferredValue: any, deferredMsg: any) => {
+                            calledOnce = true;
+                            new Promise((innerResolve: any, innerReject: any) => {
+                                cb(innerResolve, innerReject, deferredValue, deferredMsg);
+                            }).then(nativeResolve, nativeReject)
+                        }
+                        this._nativeRejectProxy = (deferredMsg: any, deferredValue: any) => {
+                            calledOnce = true;
+                            new Promise((innerResolve: any, innerReject: any) => {
+                                cb(innerResolve, innerReject, deferredValue, deferredMsg);
+                            }).then(nativeResolve, nativeReject)
+                        }
+                    }
             }
 
             if (Array.isArray(cbOrPromiseOrValues)) {
-                this._value = cbOrPromiseOrValues[0];
-                this._reason = cbOrPromiseOrValues[1];
+                let [v, r] = cbOrPromiseOrValues;
+                if (typeof v === 'function')
+                    this._resolveCallback = v;
+                else
+                    this._value = v;
+
+                if (typeof r === 'function')
+                    this._rejectCallback = r;
+                else
+                    this._reason = r;
                 callback = callback;
                 //TODO: seems pointless to pass in a static reject value for a SOLID
             }
@@ -92,10 +124,10 @@ class PPromise {
 
         if (!callback)
             callback = (resolve: Function, reject: Function) => {
-                that._nativeResolve = (v: any) => {
+                that._nativeResolveProxy = (v: any) => {
                     resolve(v);
                 }
-                that._nativeReject = reject;
+                that._nativeRejectProxy = reject;
             };
         this._promise = PPromise.createNativePromise(callback.bind(this));
 
@@ -205,6 +237,20 @@ class PPromise {
         return this._isUnbreakable;
     }
 
+    resolveRejectPrep(values: any[]): any[] {
+        if (this._type === ppTypes.SOLID || this.isSettled || this.isTriggered)
+            console.log(`Promise (name: ${this.name} already Settled earlier with and is now ${this._type}`);
+        //throw new IllegalOperationError('resolve cannot be forced on ' + ppTypes.SOLID);
+
+        const key = this.isSecured ? values.pop() : undefined;
+        if (!this.hasValidKey(key))
+            throw new IllegalOperationError(
+                `This instance (${this.name} is secure. You must provide matching key as the last argument`
+            );
+
+        return values;
+    }
+
     static resolve(value?: any): PPromise {
         return new PPromise([value], {
             isUnbreakable: true,
@@ -212,30 +258,21 @@ class PPromise {
         });
     }
 
+    /* same as resolve except it returns current instance for object chaining */
+    pushResolve(...values: any[]): PPromise {
+        this.resolve(...values);
+        return this;
+    }
 
+    resolve(...values: any[]): Promise<promiseCb> {
+        values = this.resolveRejectPrep(values);
 
-    resolve(...values: any[]): any {
-        const defaultReturn = Promise.resolve();
+        if (values.length)
+            this._resolve(values[0])
+        else
+            this._resolve();
 
-        if (this._type === ppTypes.SOLID)
-            throw new IllegalOperationError('resolve cannot be forced on ' + ppTypes.SOLID);
-
-        const key = this.isSecured ? values.pop() : undefined;
-        if( !this.hasValidKey( key) ){
-            /*
-            throw new IllegalOperationError(
-                'This instance is secure. You must provide matching key as the last argument'
-            ); */
-
-            return defaultReturn;
-        }
-
-        const internalResolve = values.length?  this._resolve(values[0]) : this._resolve();
-
-        if( internalResolve instanceof PPromise )
-            return this.promise
-
-        return defaultReturn;
+        return this.promise;
     }
 
     private _resolve(...values: any): any {
@@ -243,47 +280,49 @@ class PPromise {
 
         if (this.isSettled || this.isTriggered) return this;
 
-        if (!this.isResolved && !this.isTriggered) {
-            if (typeof this._value === 'function') {
-                callbackForThen = this.makeFulfillmentCallback(this._value);
-                resolveValue = values[0];
-            } else {
-                this._value = values.length ? values[0] : this._value;
-                resolveValue = this._value;
-                callbackForThen = this.makeFulfillmentCallback();
-            }
-            this._isTriggered = true;
-            this._promise = this._promise.then(callbackForThen)
+        this._value = values.length ? values[0] : this._value;
+        resolveValue = this._value;
+        callbackForThen = this.makeFulfillmentCallback();
 
-            this.linkAnyChains();
-            //TODO: native resolve and then above is only needed if the promises was constructed from a callback
-            this._nativeResolve?.(resolveValue);
+        this._isTriggered = true;
+        this._promise = this._promise.then(callbackForThen)
 
-            return this;
-        }
+        this.linkAnyChains();
+        //TODO: native resolve and then above is only needed if the promises was constructed from a callback
+        this._nativeResolveProxy?.(resolveValue);
 
+        return this;
     }
 
     private makeFulfillmentCallback(fn?: Function): any {
         const that = this;
-        return (...v: any) => {
+        return (v: any) => {
+            let fn = that._resolveCallback;
             that._isFulfilled = true;
             that._isResolved = true;
             that._isPending = false;
             that._isRejected = false;
-            that._value = fn ? fn(v[0]) : v[0];
+            that._isSettled = true;
+
+            // update internal _value ( result )
+            that._value = fn ? fn(v) : v;
             return that._value;
         };
     }
 
-    reject(value?: string | Error): any {
-        if (this._type === ppTypes.SOLID)
-            throw new IllegalOperationError('reject cannot be forced on ' + ppTypes.SOLID);
+    pushReject(...values: any[]): PPromise {
+        this.reject(...values);
+        return this;
+    }
 
-        if (typeof value !== 'undefined')
-            return this._reject(value);
+    reject(...values: any[]): Promise<promiseCb> {
+        values = this.resolveRejectPrep(values);
+        const value = values[0]
+        if (typeof value === 'string' || value instanceof Error)
+            this._reject(value);
 
-        return this._reject();
+        this._reject();
+        return this.promise;
     }
 
     private _reject(...values: any[]): PPromise {
@@ -301,7 +340,7 @@ class PPromise {
             this._promise = this._promise.catch(callbackForCatch);
 
             this.linkAnyChains();
-            this._nativeReject?.(rejectValue);
+            this._nativeRejectProxy?.(rejectValue);
         }
         return this;
     }
