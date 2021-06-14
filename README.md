@@ -59,7 +59,7 @@ upgrading is a creation option
 when enabled it is one way (as mentioned)
 
 -------------------------------------------------------
-About Gas(es) and Unbreakable
+About Unbreakable (and gas:deception )
 -------------------------------------------------------
 Unbreakable is a concept that affects how the root promise is related to its promise chain. 
 `isUnbreakable=false` is a property that only gases can have.  In fact `isUnbreakable` implies a type `gas:deception`
@@ -141,9 +141,40 @@ inspected via [#properties] like the `isPending` boolean.
 </pre>
 
 -------------------------------------------------------
+About Security
+-------------------------------------------------------
+You can secure a PPromise instance during creation. 
+
+A secured PPromise has certain methods and properties that behave slightly differently.  The biggest change is that 
+secured methods will take an extra argument for the secret/key.  When the key is not provided by default they will 
+fail / passthrough as silently as possible. i.e. the instance will be returned and no error will be thrown.  However,
+with an additional option `errorsWithoutKey=true` will cause an illegaloperationerror to be thrown.  
+
+Properties that are secure will return null and a method will need to be used instead of a getter.
+
+The following methods are secured :
+
+
+The following properties are secured :
+
+## use-case
+You have an animation that is dynamically resolving promises that it has been given.  
+
+
+-------------------------------------------------------
 Constructor Behaviour
 -------------------------------------------------------
-options object
+## options object
+### options.key
+A symbol or a string that secures mutable operations on the PPromise. 
+<pre>
+{
+   ...,
+   secret : 'whatever'
+}
+</pre>
+
+### options.type
 #### solid
 `{ type : 'solid'} ` is equivalent to: 
 <pre>
@@ -208,4 +239,6 @@ A settled PPromise cannot be resolved or rejected differently regardless of its 
 
 A settled PPromise cannot be severed regardless of its type.  
 
-
+-------------------------------------------------------
+Future Possibilities
+-------------------------------------------------------

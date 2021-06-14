@@ -66,6 +66,25 @@ describe('Given All PPromise Types', () => {
         await myPPromise.resolve();
         await myPPromise.resolve('impossible value');
         expect(myPPromise.result).toEqual('original value');
+    });
+
+    test('you can pass in a symbol or string as a key', ()=>{
+        const mySecret = Symbol('secret');
+        const myPPromise = new PPromise({
+            secret : mySecret
+        });
+        expect(myPPromise instanceof PPromise).toBe(true);
+    });
+
+
+    test( 'when a ppromise uses a secret you cannot resolve without it',async()=>{
+        const mySecret = Symbol('secret');
+        const myPPromise = new PPromise({
+            secret : mySecret
+        });
+
+        await myPPromise.resolve('updated Value but no key');
+        expect(myPPromise.isFulfilled).toBe(false);
     })
     /***
      * if a function is passed as the value then

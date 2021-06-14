@@ -20,7 +20,7 @@ describe('Deception Pattern', () => {
             x = value;
 
         });
-        await myPromise.resolve('new value').promise;
+        await myPromise.resolve('new value');
         expect(x).toEqual('new value');
     });
 
@@ -38,7 +38,7 @@ describe('Deception Pattern', () => {
             y = value;
         })
 
-        await myPromise.resolve('new value').promise;
+        await myPromise.resolve('new value');
         expect(x).not.toEqual('new value');
         expect(y).toEqual('new value');
     });
