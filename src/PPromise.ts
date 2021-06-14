@@ -7,9 +7,9 @@ interface promiseCb {
 }
 
 class PPromise {
-    readonly name?: string|symbol;
+    readonly name?: string | symbol;
     private _type: ppTypes = ppTypes.FLUID;
-    private _secret : symbol = Symbol('secret');
+    private readonly _secret?: string | symbol;
     private _isFulfilled: boolean = false;
     private _isPending: boolean = true;
     private _isRejected: boolean = false;
@@ -25,7 +25,8 @@ class PPromise {
     private options: optionsType = {
         name: this.name,
         isUnbreakable: this._isUnbreakable,
-        type: ppTypes.FLUID
+        type: ppTypes.FLUID,
+        secret: undefined
     };
 
     //  private _resolveValueCache: any;
@@ -64,8 +65,9 @@ class PPromise {
         if (typeof this.options.type !== 'undefined') this._type = this.options.type;
         if (typeof this.options.isUnbreakable !== 'undefined') this._isUnbreakable = this.options.isUnbreakable;
         if (typeof this.options.name !== 'undefined') this.name = this.options.name;
+        this._secret = this.options?.secret || undefined;
 
-        if( this._type === ppTypes.GAS )
+        if (this._type === ppTypes.GAS)
             this._isUnbreakable = false;
 
         //init states
@@ -83,7 +85,7 @@ class PPromise {
                 }
 
             if (typeof cbOrPromiseOrValues === 'function') {
-                    callback = cbOrPromiseOrValues;
+                callback = cbOrPromiseOrValues;
             }
 
             if (Array.isArray(cbOrPromiseOrValues)) {
@@ -125,6 +127,14 @@ class PPromise {
                 `Must be ${!this.isUnbreakable} for type ${options.type}`);
 
         return options;
+    }
+
+    private hasValidKey(matchingKey?: string | symbol) : boolean {
+        if (!this.isSecured) return true;
+
+        if(typeof matchingKey === 'undefined') return false;
+
+        return matchingKey === this._secret;
     }
 
     private createChain(): void {
@@ -182,6 +192,10 @@ class PPromise {
         return this._isPending;
     }
 
+    get isSecured() {
+        return !!this._secret;
+    }
+
     get isRejected() {
         return this._isRejected;
     }
@@ -201,18 +215,37 @@ class PPromise {
         });
     }
 
+
+
     resolve(...values: any[]): any {
+        const defaultReturn = Promise.resolve();
+
         if (this._type === ppTypes.SOLID)
             throw new IllegalOperationError('resolve cannot be forced on ' + ppTypes.SOLID);
 
-        if (values.length)
-            return this._resolve(values[0])
+        const key = this.isSecured ? values.pop() : undefined;
+        if( !this.hasValidKey( key) ){
+            /*
+            throw new IllegalOperationError(
+                'This instance is secure. You must provide matching key as the last argument'
+            ); */
 
-        return this._resolve();
+            return defaultReturn;
+        }
+
+        const internalResolve = values.length?  this._resolve(values[0]) : this._resolve();
+
+        if( internalResolve instanceof PPromise )
+            return this.promise
+
+        return defaultReturn;
     }
 
     private _resolve(...values: any): any {
         let callbackForThen, resolveValue;
+
+        if( this.isResolved || this.isTriggered )
+            return;
 
         if (!this.isResolved && !this.isTriggered) {
             if (typeof this._value === 'function') {
@@ -229,8 +262,10 @@ class PPromise {
             this.linkAnyChains();
             //TODO: native resolve and then above is only needed if the promises was constructed from a callback
             this._nativeResolve?.(resolveValue);
+
+            return this;
         }
-        return this;
+
     }
 
     private makeFulfillmentCallback(fn?: Function): any {
@@ -270,7 +305,7 @@ class PPromise {
             this._promise = this._promise.catch(callbackForCatch);
 
             this.linkAnyChains();
-             this._nativeReject?.(rejectValue);
+            this._nativeReject?.(rejectValue);
         }
         return this;
     }

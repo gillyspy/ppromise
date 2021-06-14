@@ -8,6 +8,7 @@ type optionsType = {
     name? : string|symbol;
     isUnbreakable? : boolean;
     type? : ppTypes;
+    secret? : string | symbol;
 }
 
 type resolveRejectArgs = [any, any?];
