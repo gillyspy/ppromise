@@ -7,7 +7,7 @@ describe('fluid:deferred type', () => {
     test('instantiate PPromise as type fluid will make it a fluid:deferred ', () => {
         const myPPromise = new PPromise({
             type: ppTypes.FLUID
-        });
+        } as optionsType );
         expect(myPPromise.type).toEqual(ppTypes.FLUID);
         expect(myPPromise.isUnbreakable).toEqual(true);
     });
@@ -15,16 +15,6 @@ describe('fluid:deferred type', () => {
     test('default type is FLUID', () => {
         const myPPromise = new PPromise();
         expect(myPPromise.type).toEqual(ppTypes.FLUID);
-    });
-
-    test('making a fluid "breakable" throws a Type error', () => {
-        expect(() => {
-            new PPromise({
-                type: ppTypes.FLUID,
-                isUnbreakable: false
-            })
-        }).toThrow(InvalidDefinitionError);
-
     });
 
     test('a pending FLUID:deferred can be updated and will resolve with updated value', async () => {
@@ -87,7 +77,7 @@ describe('fluid:deferred type', () => {
         const myPPromise = new PPromise(['output'], {
             name: 'resolvedLikeDeferred',
             type: ppTypes.FLUID
-        });
+        } as optionsType);
         expect(myPPromise.type).toEqual(ppTypes.FLUID)
         expect(myPPromise.result).toEqual(undefined);
         expect(myPPromise.isUnbreakable).toBe(true);
@@ -105,7 +95,7 @@ describe('fluid:deferred type', () => {
         const myPPromise = new PPromise(['output'], {
             name: 'resolvedLikeDeferred',
             type: ppTypes.FLUID
-        });
+        } as optionsType);
 
         expect(myPPromise.result).toEqual(undefined);
         expect(myPPromise.isUnbreakable).toBe(true);

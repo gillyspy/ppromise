@@ -6,7 +6,7 @@ describe('Deception Pattern', () => {
     test('instantiate PPromise as type GAS will make it a fluid:deception type', () => {
         const myPPromise = new PPromise({
             type: ppTypes.GAS
-        });
+        } as optionsType);
         expect(myPPromise.type).toEqual(ppTypes.GAS);
     });
 
@@ -14,7 +14,7 @@ describe('Deception Pattern', () => {
         const myPromise = new PPromise(['resolve'], {
             name: 'resolvedLikeDeferrd',
             type: ppTypes.GAS
-        });
+        } as optionsType);
         let x;
         myPromise.then((value: any) => {
             x = value;
@@ -28,7 +28,7 @@ describe('Deception Pattern', () => {
         const myPromise = new PPromise(['resolve'], {
             name: 'resolvedLikeDeferrd',
             type: ppTypes.GAS
-        });
+        } as optionsType);
         let x, y;
         myPromise.then((value: any) => {
             x = value;
@@ -47,7 +47,7 @@ describe('Deception Pattern', () => {
         const myPPromise = new PPromise(['resolve'], {
             name: 'resolvedLikeDeferred',
             type: ppTypes.GAS
-        });
+        } as optionsType);
         expect(myPPromise.isUnbreakable).toBe(false);
         myPPromise.upgradeType(ppTypes.FLUID);
         expect(myPPromise.type).toBe(ppTypes.FLUID);
@@ -61,7 +61,7 @@ describe('Deception Pattern', () => {
          const myPPromise = new PPromise(['output'], {
             name: 'resolvedLikeDeferred',
             type: ppTypes.GAS
-        });
+        } as optionsType);
          expect(myPPromise.type).toEqual(ppTypes.GAS)
          expect(myPPromise.result).toEqual(undefined );
         expect(myPPromise.isUnbreakable).toBe(false);

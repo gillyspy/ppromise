@@ -5,13 +5,12 @@ import InvalidDefinitionError from "./errors/InvalidDefinitionError";
 interface promiseCb {
     (resolve: Function, reject: Function): void;
 }
+
 type registryType = {
     [ name : string] : PPromise
 }
 
 const Registry : registryType = {};
-
-
 
 class PPromise {
     readonly name: keyType = Symbol(Math.random().toString());
@@ -32,14 +31,14 @@ class PPromise {
     private _nativeRejectProxy?: Function;
     private _promise: Promise<promiseCb>;
     private readonly options: optionsType = {
-        name: this.name,
+        name: Symbol(Math.random().toString()),
         isUnbreakable: true,
         type: ppTypes.FLUID,
         secret: undefined
     };
 
     constructor();
-    constructor(cbOrPromiseOrValuesOrOptions: Function | Promise<any> | resolveRejectArgs | optionsType);
+    constructor(cbOrPromiseOrValuesOrOptions: Function | Promise<any> | resolveRejectArgs | object | optionsType);
     constructor(cbOrPromiseOrValuesOrOptions: Function | Promise<any> | resolveRejectArgs | object, opts: optionsType);
     //constructor(values: callbackArgs, options?: object );
     //constructor(options?: object);
@@ -118,7 +117,6 @@ class PPromise {
                     this._rejectCallback = r;
                 else
                     this._reason = r;
-                callback = callback;
                 //TODO: seems pointless to pass in a static reject value for a SOLID
             }
         }
@@ -135,11 +133,12 @@ class PPromise {
         if (this._type === ppTypes.SOLID)
             this._resolve(this._value);
 
-        if (this._type === ppTypes.GAS && !this.isUnbreakable)
+        if (this._type === ppTypes.GAS)
             this.createChain();
 
         //TODO: https://github.com/microsoft/TypeScript/issues/1863
-        Registry[this.name.toString()] = this;
+        if(/^symbol.chain/i.test( this.name.toString()))
+            Registry[this.name.toString()] = this;
     }
 
 
@@ -183,12 +182,13 @@ class PPromise {
 
     private createChain(): void {
         if (this.isUnbreakable) return;
-        this._Chain = new PPromise({
+
+        const opts = {
             name: this._chainSecret,
             type: ppTypes.FLUID,
-            isUnbreakable: true,
             secret: this._chainSecret
-        });
+        };
+        this._Chain = new PPromise(opts as optionsType );
     }
 
     private linkAnyChains(): void {
@@ -269,15 +269,13 @@ class PPromise {
             throw new IllegalOperationError(
                 `This instance (${name!.toString()} is secure. You must provide matching key as the last argument`
             );
-
         return values;
     }
 
     static resolve(value?: any): PPromise {
         return new PPromise([value], {
-            isUnbreakable: true,
             type: ppTypes.SOLID
-        });
+        } as optionsType);
     }
 
     /* same as resolve except it returns current instance for object chaining */
@@ -316,7 +314,7 @@ class PPromise {
         return this;
     }
 
-    private makeFulfillmentCallback(fn?: Function): any {
+    private makeFulfillmentCallback(): any {
         const that = this;
         return (v: any) => {
             let fn = that._resolveCallback;

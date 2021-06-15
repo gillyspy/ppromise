@@ -8,7 +8,7 @@ describe('Given a new PPromise of type solid', () => {
     const newSolidPromise = (values: any[] = ['resolved immediately']) => {
         return new PPromise(values, {
             type: ppTypes.SOLID
-        });
+        } as optionsType);
     }
 
     test('call the constructor with resolve value as a string is equivalent to calling PPromise.resolve statically with a string', async () => {
@@ -65,7 +65,7 @@ describe('Given a new PPromise of type solid', () => {
             resolve()
         }, {
             type: ppTypes.SOLID
-        });
+        } as optionsType);
         expect(myPPromise instanceof PPromise).toBe(true);
 
     })
@@ -82,7 +82,7 @@ describe('Given a new PPromise of type solid', () => {
     test('(solid) PPromise ignores calls to resolve or reject', async () => {
         const solidPPromise = new PPromise(['resolution value'], {
             type: ppTypes.SOLID
-        });
+        } as optionsType);
         await solidPPromise.promise;
         expect(solidPPromise.isFulfilled).toEqual(true);
         expect(solidPPromise.result).toEqual('resolution value');
@@ -121,7 +121,7 @@ describe('Given a new PPromise of type solid', () => {
                 }, {
                     name: 'solidPPromise',
                     type: ppTypes.SOLID
-                });
+                } as optionsType );
 
             await new Promise((resolve: Function, reject): void => {
                 setTimeout((): void => {
@@ -150,7 +150,7 @@ describe('Given a new PPromise of type solid', () => {
         const myPPromise = new PPromise(['output'], {
             name: 'resolvedLikeDeferred',
             type: ppTypes.SOLID
-        });
+        } as optionsType);
 
         expect(myPPromise.isTriggered).toEqual(true);
         await myPPromise.promise;
