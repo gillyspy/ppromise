@@ -34,7 +34,8 @@ class PPromise {
         name: Symbol(Math.random().toString()),
         isUnbreakable: true,
         type: ppTypes.FLUID,
-        secret: undefined
+        secret: undefined,
+        registry : Registry
     };
 
     constructor();
