@@ -144,11 +144,7 @@ describe('fluid:deferred type', () => {
             expect(hare.isSettled).toBe(false);
             expect(tortoise.isSettled).toBe( true );
         },5000);
-
     });
-
-
-
 
     test.todo('call to PPromise.getDeferred returns PPromise instance of type FLUID')
 });

@@ -142,7 +142,7 @@ describe('Given All PPromise Types', () => {
 
     })
 
-    test('object passed to contructor (via options.registry) will register PPromises there also', async () => {
+    test('object passed to contructor (via options.registry) will be the register for PPromises', async () => {
         const myRegistry: registryType = {};
         const myPPromise = new PPromise([Math.random(), 'for reject'], {
             name: 'myPPromise',
@@ -155,6 +155,20 @@ describe('Given All PPromise Types', () => {
         expect(foundPP.result).toBeGreaterThanOrEqual(0);
         expect(foundPP.result).toBeLessThanOrEqual(1);
     })
+
+    test('resolve after a given duration in ms', async ()=>{
+        const key = Symbol('secret');
+        const myPPromise = new PPromise(['better late than never!'],{
+            secret : key
+        });
+        let start = new Date();
+        const duration = await myPPromise.resolveAfter(3000,'i agree',key).then( value =>{
+            let end = new Date();
+            return (+end - +start);
+        });
+        expect(duration).toBeGreaterThanOrEqual(3000);
+        expect(myPPromise.result).toEqual('i agree');
+    });
 
     test.todo('pushThen does same thing as then except instance is returned insead of promise');
 

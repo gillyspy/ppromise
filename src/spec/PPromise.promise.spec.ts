@@ -105,7 +105,7 @@ describe('Given a new PPromise of type solid', () => {
         async () => {
 
             let externalResolve: Function;
-            let maxTimeToWait = 6000, minTimeToWait = 5000, duration = 0;
+            let maxTimeToWait = 6000, minTimeToWait = 1000, duration = 0;
             let startTime = new Date();
             const calcDuration = (startTime: any): number => {
                 let end = new Date();
@@ -141,7 +141,7 @@ describe('Given a new PPromise of type solid', () => {
             });
             await solidPPromise.promise;
             expect(solidPPromise.isFulfilled).toEqual(true);
-            expect(duration).toBeGreaterThan(minTimeToWait);
+            expect(duration).toBeLessThanOrEqual(minTimeToWait);
         },
         20000
     );

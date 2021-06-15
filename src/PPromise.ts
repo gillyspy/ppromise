@@ -294,6 +294,25 @@ class PPromise {
         return this;
     }
 
+    resolveAfter(seconds: number, ...args: any[]): Promise<any> {
+        let key;
+        if (this.isSecured) {
+            let key = args.pop();
+            PPromise.checkPermissions(key, this._secret);
+            args.push(key)
+        }
+
+        if (typeof seconds !== 'number') throw TypeError('invalid type for seconds');
+
+        const that = this;
+
+        return new Promise( (resolve)=> {
+            setTimeout(() => {
+                resolve( that.resolve( ...args ) )
+            }, seconds)
+        });
+    }
+
     resolve(...values: any[]): Promise<promiseCb> {
         values = this.resolveRejectPrep(values);
 
