@@ -170,6 +170,7 @@ describe('Given All PPromise Types', () => {
         expect(myPPromise.result).toEqual('i agree');
     });
 
+
     test.todo('pushThen does same thing as then except instance is returned insead of promise');
 
     test.todo('Triggered & pending PPromise is same as calling resolve on a solid promise');

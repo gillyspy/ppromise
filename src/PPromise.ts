@@ -373,23 +373,20 @@ class PPromise {
         return this.promise;
     }
 
-    private _reject(...values: any[]): PPromise {
+    private _reject(...reasons: any[]): PPromise {
         let callbackForCatch, rejectValue;
-        if (!this.isSettled && !this.isTriggered) {
-            if (typeof this._reason === 'function') {
-                callbackForCatch = this.makeRejectCallback(this._reason);
-                rejectValue = values[0];
-            } else {
-                this._reason = values.length ? values[0] : this._reason;
-                rejectValue = this._reason;
-                callbackForCatch = this.makeRejectCallback();
-            }
-            this._isTriggered = true;
-            this._promise = this._promise.catch(callbackForCatch);
+        if (this.isSettled || this.isTriggered) return this;
 
-            this.linkAnyChains();
-            this._nativeRejectProxy?.(rejectValue);
-        }
+        this._reason = reasons.length ? reasons[0] : this._reason;
+        rejectValue = this._reason;
+        callbackForCatch = this.makeRejectCallback();
+
+        this._isTriggered = true;
+        this._promise = this._promise.catch(callbackForCatch);
+
+        this.linkAnyChains();
+        this._nativeRejectProxy?.(rejectValue);
+
         return this;
     }
 
@@ -444,17 +441,17 @@ class PPromise {
             PPromise.checkPermissions(key, this._secret);
         }
 
-        let chainEvent = args[0];
+        let chainEvent = args.shift();
 
         if (chainEvent === 'resolve') {
             try {
-                this.chain.resolve(this._chainSecret)
+                this.chain.resolve(...args,this._chainSecret)
             } catch (e) {
                 console.log('chain failed to resolve', e.message);
             }
         } else if (chainEvent === 'reject') {
             try {
-                this.chain.reject(this._chainSecret)
+                this.chain.reject(...args,this._chainSecret)
             } catch (e) {
                 console.log('chain failed to resolve', e.message);
             }

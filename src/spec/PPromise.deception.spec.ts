@@ -34,7 +34,7 @@ describe('Deception Pattern', () => {
             x = value;
         });
 
-        myPromise.sever().then( (value : any)=>{
+        myPromise.sever().then((value: any) => {
             y = value;
         })
 
@@ -43,7 +43,7 @@ describe('Deception Pattern', () => {
         expect(y).toEqual('new value');
     });
 
-    test('PPromises can be upgraded from Gas to Fluid',()=>{
+    test('PPromises can be upgraded from Gas to Fluid', () => {
         const myPPromise = new PPromise(['resolve'], {
             name: 'resolvedLikeDeferred',
             type: ppTypes.GAS
@@ -52,18 +52,18 @@ describe('Deception Pattern', () => {
         myPPromise.upgradeType(ppTypes.FLUID);
         expect(myPPromise.type).toBe(ppTypes.FLUID);
         expect(myPPromise.isUnbreakable).toBe(true);
-        expect(()=>{
+        expect(() => {
             myPPromise.sever();
         }).toThrow(IllegalOperationError);
 
     });
-    test('PPromises can be upgraded from Gas to Solid',async ()=>{
-         const myPPromise = new PPromise(['output'], {
+    test('PPromises can be upgraded from Gas to Solid', async () => {
+        const myPPromise = new PPromise(['output'], {
             name: 'resolvedLikeDeferred',
             type: ppTypes.GAS
         } as optionsType);
-         expect(myPPromise.type).toEqual(ppTypes.GAS)
-         expect(myPPromise.result).toEqual(undefined );
+        expect(myPPromise.type).toEqual(ppTypes.GAS)
+        expect(myPPromise.result).toEqual(undefined);
         expect(myPPromise.isUnbreakable).toBe(false);
         myPPromise.upgradeType(ppTypes.SOLID);
         expect(myPPromise.isTriggered).toEqual(true);
@@ -73,10 +73,29 @@ describe('Deception Pattern', () => {
         await myPPromise.resolve();
         expect(myPPromise.isPending).toEqual(false);
         expect(myPPromise.result).toBe('output');
-        expect(()=>{
+        expect(() => {
             myPPromise.sever();
         }).toThrow(IllegalOperationError);
     });
 
+    test('sever can be instructed to reject or resolve the dropped chain', (done) => {
+        const mySeverable = new PPromise({type: ppTypes.GAS});
+        let externalMsg: any, externalValue: any;
+
+        mySeverable.catch((x: any) => {
+            externalMsg = x;
+            expect(externalMsg).toEqual('rejection message');
+        });
+        //new chain automatically
+
+        mySeverable.sever('reject', 'rejection message')
+
+        mySeverable.then((x: any) => {
+            externalValue = x;
+            expect(externalValue).toEqual('resolution value');
+            done();
+        });
+        mySeverable.sever('resolve', 'resolution value');
+    })
 });
 
