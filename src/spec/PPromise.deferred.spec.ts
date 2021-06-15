@@ -7,7 +7,7 @@ describe('fluid:deferred type', () => {
     test('instantiate PPromise as type fluid will make it a fluid:deferred ', () => {
         const myPPromise = new PPromise({
             type: ppTypes.FLUID
-        } as optionsType );
+        } as optionsType);
         expect(myPPromise.type).toEqual(ppTypes.FLUID);
         expect(myPPromise.isUnbreakable).toEqual(true);
     });
@@ -100,13 +100,55 @@ describe('fluid:deferred type', () => {
         expect(myPPromise.result).toEqual(undefined);
         expect(myPPromise.isUnbreakable).toBe(true);
         expect(myPPromise.type).toEqual(ppTypes.FLUID);
-        expect(()=>{
+        expect(() => {
             myPPromise.upgradeType(ppTypes.GAS);
         }).toThrow(IllegalOperationError);
         expect(myPPromise.result).toEqual(undefined);
         expect(myPPromise.isUnbreakable).toBe(true);
         expect(myPPromise.type).toEqual(ppTypes.FLUID)
     });
+
+    test('passing in a native Promise for type FLUID will error', () => {
+
+        expect(() => {
+            const myPPromise = new PPromise(Promise.resolve());
+        }).toThrow(InvalidDefinitionError);
+    })
+
+    test(
+        'Fluid PPromise constructed with full executor function can still provide a deferred resolve and value',
+        async () => {
+            const fluidPromise = new PPromise(
+                (resolve: Function, reject: Function, value: any, msg: any) => {
+                    resolve(1 + value);
+                });
+
+            await fluidPromise.resolve(10)
+            expect(fluidPromise.result).toEqual(11);
+        });
+
+    test('Fluid PPromise constructed with full executor must contain a resolve or reject or they will hang', () => {
+        const hare = new PPromise(
+            (resolve: Function, reject: Function, value: any, msg: any) => {
+                return value; //return :(
+            });
+        const tortoise = new PPromise(
+            (resolve: Function, reject: Function, value: any, msg: any) => {
+                resolve( value); //resolve :D
+            });
+
+        hare.resolve('loser');
+        tortoise.resolve('winner');
+
+        setTimeout( ()=>{
+            expect(hare.isSettled).toBe(false);
+            expect(tortoise.isSettled).toBe( true );
+        },5000);
+
+    });
+
+
+
 
     test.todo('call to PPromise.getDeferred returns PPromise instance of type FLUID')
 });

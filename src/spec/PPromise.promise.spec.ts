@@ -1,6 +1,7 @@
 import PPromise from '../PPromise';
 import {ppTypes, optionsType} from '../Types'
 import IllegalOperationError from "../errors/IllegalOperationError";
+import {clearInterval} from "timers";
 
 
 describe('Given a new PPromise of type solid', () => {
@@ -100,7 +101,7 @@ describe('Given a new PPromise of type solid', () => {
         expect(myValueIsAssigned).not.toEqual(false);
     });
 
-    test('this test will take >5s because PPromises constructed from callbacks cannot force resolve',
+    test('this test will go quickly because PPromises constructed from callbacks CAN force resolve',
         async () => {
 
             let externalResolve: Function;
@@ -113,7 +114,8 @@ describe('Given a new PPromise of type solid', () => {
             externalResolve = (x?: any) => {
                 //
             };
-
+            let myInterval : any;
+            let tick = 0;
             const solidPPromise = new PPromise(
                 (resolve: Function, reject: Function) => {
                     console.log('solidPPromise is making a callback');
@@ -123,12 +125,19 @@ describe('Given a new PPromise of type solid', () => {
                     type: ppTypes.SOLID
                 } as optionsType );
 
+            solidPPromise.promise.then(x=>{
+                clearInterval(myInterval);
+            })
+
             await new Promise((resolve: Function, reject): void => {
-                setTimeout((): void => {
+               myInterval =  setInterval((): void => {
                     externalResolve();
                     duration = calcDuration(startTime);
                     resolve();
-                }, maxTimeToWait);
+                    tick += 100;
+                    if( tick > minTimeToWait )
+                        clearInterval(myInterval);
+                }, 100);
             });
             await solidPPromise.promise;
             expect(solidPPromise.isFulfilled).toEqual(true);

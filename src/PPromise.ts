@@ -7,10 +7,10 @@ interface promiseCb {
 }
 
 type registryType = {
-    [ name : string] : PPromise
+    [name: string]: PPromise
 }
 
-const Registry : registryType = {};
+const Registry: registryType = {};
 
 class PPromise {
     readonly name: keyType = Symbol(Math.random().toString());
@@ -35,7 +35,7 @@ class PPromise {
         isUnbreakable: true,
         type: ppTypes.FLUID,
         secret: undefined,
-        registry : Registry
+        registry: Registry
     };
 
     constructor();
@@ -45,7 +45,7 @@ class PPromise {
     //constructor(options?: object);
     //constructor(callback: Function, value: any, options?: object );
     //constructor(promise: Promise<any>, value: any, options?: object);
-    constructor(...args: [any?,any?]) {
+    constructor(...args: [any?, any?]) {
         if (args.length > 2) throw new InvalidDefinitionError('constructor');
 
         //deal with options argument first
@@ -54,13 +54,13 @@ class PPromise {
             this.options = this.parseOptions(args.pop());
         //args.length === 1
 
-        if (args.length === 1 && !Array.isArray(args[0]) && typeof args[0] === 'object')
+        if (args.length === 1 && !Array.isArray(args[0]) && typeof args[0] === 'object' && !(args[0] instanceof Promise))
             this.options = this.parseOptions(args.pop());
         //args.length = 0
 
         const that = this;
 
-        let callback, registry : registryType;
+        let callback, registry: registryType, promise;
 
         //apply options
         if (typeof this.options.type !== 'undefined') this._type = this.options.type;
@@ -77,9 +77,12 @@ class PPromise {
             if (cbOrPromiseOrValues instanceof Promise)
                 if (this._type === ppTypes.SOLID) {
                     // Promises for SOLID can be substituted straight in more-or-less
-                    this._promise = cbOrPromiseOrValues;
+                    promise = cbOrPromiseOrValues;
                 } else {
                     //TODO: deal with promises
+                    throw new InvalidDefinitionError(
+                        'Native Promise',
+                        `They are only currently supported for ${ppTypes.SOLID}. Please use Promise.all, any, etc instead`)
                 }
 
             if (typeof cbOrPromiseOrValues === 'function') {
@@ -130,7 +133,10 @@ class PPromise {
                 }
                 that._nativeRejectProxy = reject;
             };
-        this._promise = PPromise.createNativePromise(callback.bind(this));
+        if (typeof promise === 'undefined')
+            promise = PPromise.createNativePromise(callback.bind(this));
+
+        this._promise = promise;
 
         if (this._type === ppTypes.SOLID)
             this._resolve(this._value);
@@ -140,7 +146,7 @@ class PPromise {
 
         //TODO: https://github.com/microsoft/TypeScript/issues/1863
 
-        if(!/^symbol.chain/i.test( this.name.toString()))
+        if (!/^symbol.chain/i.test(this.name.toString()))
             registry[this.name.toString()] = this;
 
     }
@@ -161,13 +167,13 @@ class PPromise {
         return options;
     }
 
-    private static checkPermissions(key?: keyType, secret? : keyType): void {
+    private static checkPermissions(key?: keyType, secret?: keyType): void {
 
         let keyType = typeof key;
-        if( keyType === 'undefined' || keyType !== typeof secret)
+        if (keyType === 'undefined' || keyType !== typeof secret)
             throw new TypeError(`Key provided is type ${keyType} and not in the correct format of ${typeof secret}`);
 
-        if (keyType !== 'string' && keyType  !== 'symbol')
+        if (keyType !== 'string' && keyType !== 'symbol')
             throw new TypeError(`Key provided is type ${keyType} and not in the correct format of ${typeof secret}`);
 
         if (secret !== key && typeof key !== 'undefined')
@@ -192,7 +198,7 @@ class PPromise {
             type: ppTypes.FLUID,
             secret: this._chainSecret
         };
-        this._Chain = new PPromise(opts as optionsType );
+        this._Chain = new PPromise(opts as optionsType);
     }
 
     private linkAnyChains(): void {
@@ -389,52 +395,52 @@ class PPromise {
     }
 
     static getDeferred(...args: any[]) {
-          return new PPromise(...args as [any?,any?]);
+        return new PPromise(...args as [any?, any?]);
     }
 
-    static find( name : keyType, key? : keyType): PPromise | undefined{
-        if(typeof name === 'undefined') return
+    static find(name: keyType, key?: keyType): PPromise | undefined {
+        if (typeof name === 'undefined') return
 
         //Symbols not supported as keys yet
         //TODO: https://github.com/microsoft/TypeScript/issues/1863
         let idx = name.toString();
 
-        const candidate :PPromise = Registry[idx];
+        const candidate: PPromise = Registry[idx];
 
-        if( !candidate ) return;
+        if (!candidate) return;
 
         if (!candidate.isSecured) return candidate;
 
-        if( typeof key === 'undefined') return;
+        if (typeof key === 'undefined') return;
 
-        if (candidate.isValidKey( key ) ) return candidate;
+        if (candidate.isValidKey(key)) return candidate;
 
         return;
     }
 
-    sever(...args :any[] ): PPromise {
+    sever(...args: any[]): PPromise {
 
-        if( this.isSecured) {
+        if (this.isSecured) {
             let key = args.pop() as keyType
-            PPromise.checkPermissions( key, this._secret );
+            PPromise.checkPermissions(key, this._secret);
         }
 
         let chainEvent = args[0];
 
-        if( chainEvent === 'resolve' ) {
+        if (chainEvent === 'resolve') {
             try {
-                this.chain.resolve(this._chainSecret )
-            }catch(e){
-                console.log('chain failed to resolve',e.message);
+                this.chain.resolve(this._chainSecret)
+            } catch (e) {
+                console.log('chain failed to resolve', e.message);
             }
-        } else if( chainEvent === 'reject'){
-               try {
+        } else if (chainEvent === 'reject') {
+            try {
                 this.chain.reject(this._chainSecret)
-            }catch(e){
-                console.log('chain failed to resolve',e.message);
+            } catch (e) {
+                console.log('chain failed to resolve', e.message);
             }
 
-        } else if( typeof chainEvent !== 'undefined'){
+        } else if (typeof chainEvent !== 'undefined') {
             throw new IllegalOperationError(`${chainEvent} is not a valid sever operation`);
         }
 
