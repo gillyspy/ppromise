@@ -50,6 +50,7 @@ describe('Deception Pattern', () => {
         });
         expect(myPPromise.isUnbreakable).toBe(false);
         myPPromise.upgradeType(ppTypes.FLUID);
+        expect(myPPromise.type).toBe(ppTypes.FLUID);
         expect(myPPromise.isUnbreakable).toBe(true);
         expect(()=>{
             myPPromise.sever();

@@ -1,14 +1,20 @@
-import {optionsType, ppTypes, resolveRejectArgs} from './Types'
+import {keyType, optionsType, ppTypes, resolveRejectArgs} from './Types'
 import IllegalOperationError from "./errors/IllegalOperationError";
 import InvalidDefinitionError from "./errors/InvalidDefinitionError";
 
 interface promiseCb {
     (resolve: Function, reject: Function): void;
 }
-const Registry = {};
+type registryType = {
+    [ name : string] : PPromise
+}
+
+const Registry : registryType = {};
+
+
 
 class PPromise {
-    readonly name?: string|symbol = Symbol('unknown');
+    readonly name: keyType = Symbol(Math.random().toString());
     private _type: ppTypes = ppTypes.FLUID;
     private _isFulfilled: boolean = false;
     private _isPending: boolean = true;
@@ -20,16 +26,15 @@ class PPromise {
     private readonly _rejectCallback?: Function;
     private _reason?: string | Error;
     private _Chain?: PPromise;
-    private readonly _secret?: symbol | string;
-    private readonly _chainSecret: string | symbol = Symbol('chain');
+    private readonly _secret?: keyType;
+    private readonly _chainSecret: keyType = Symbol('chain');
     private _isTriggered: boolean = false;
-    private _isUnbreakable: boolean = true;
     private _nativeResolveProxy?: Function;
     private _nativeRejectProxy?: Function;
     private _promise: Promise<promiseCb>;
     private readonly options: optionsType = {
         name: this.name,
-        isUnbreakable: this._isUnbreakable,
+        isUnbreakable: true,
         type: ppTypes.FLUID,
         secret: undefined
     };
@@ -41,7 +46,7 @@ class PPromise {
     //constructor(options?: object);
     //constructor(callback: Function, value: any, options?: object );
     //constructor(promise: Promise<any>, value: any, options?: object);
-    constructor(...args: any[]) {
+    constructor(...args: [any?,any?]) {
         if (args.length > 2) throw new InvalidDefinitionError('constructor');
 
         //deal with options argument first
@@ -60,12 +65,8 @@ class PPromise {
 
         //apply options
         if (typeof this.options.type !== 'undefined') this._type = this.options.type;
-        if (typeof this.options.isUnbreakable !== 'undefined') this._isUnbreakable = this.options.isUnbreakable;
-        if (typeof this.options.name !== 'undefined') this.name = this.options.name;
+        this.name = this.options?.name || Symbol('unknown');
         this._secret = this.options?.secret || undefined;
-
-        if (this._type === ppTypes.GAS)
-            this._isUnbreakable = false;
 
         //init states
         this.initStates();
@@ -137,6 +138,9 @@ class PPromise {
 
         if (this._type === ppTypes.GAS && !this.isUnbreakable)
             this.createChain();
+
+        //TODO: https://github.com/microsoft/TypeScript/issues/1863
+        Registry[this.name.toString()] = this;
     }
 
 
@@ -155,28 +159,27 @@ class PPromise {
         return options;
     }
 
-    private checkPermissions(key?: string | symbol): void {
-        if (!this.isSecured) return;
+    private static checkPermissions(key?: keyType, secret? : keyType): void {
 
         let keyType = typeof key;
-        if( keyType === 'undefined' || keyType !== typeof this._secret)
-            throw new TypeError(`Key provided is type ${keyType} and not in the correct format of ${typeof this._secret}`);
+        if( keyType === 'undefined' || keyType !== typeof secret)
+            throw new TypeError(`Key provided is type ${keyType} and not in the correct format of ${typeof secret}`);
 
         if (keyType !== 'string' && keyType  !== 'symbol')
-            throw new TypeError(`Key provided is type ${keyType} and not in the correct format of ${typeof this._secret}`);
+            throw new TypeError(`Key provided is type ${keyType} and not in the correct format of ${typeof secret}`);
 
-        if (this._secret !== key && typeof key !== 'undefined')
+        if (secret !== key && typeof key !== 'undefined')
             throw new IllegalOperationError(
                 `Key ${key.toString()} does not match secret`
             )
     }
 
-    private hasValidKey(matchingKey?: string | symbol): boolean {
+    private isValidKey(candidateKey?: string | symbol): boolean {
         if (!this.isSecured) return true;
 
-        if (typeof matchingKey === 'undefined') return false;
+        if (typeof candidateKey === 'undefined') return false;
 
-        return matchingKey === this._secret;
+        return candidateKey === this._secret;
     }
 
     private createChain(): void {
@@ -217,6 +220,8 @@ class PPromise {
     }
 
     get promise(): Promise<promiseCb> {
+        //note: types change so... do not rely upon isUnbreakable
+        //if it has a chain then return it
         if (this.chain instanceof PPromise) return this.chain.promise;
 
         return this._promise; // also implies unbreakable
@@ -251,18 +256,19 @@ class PPromise {
     }
 
     get isUnbreakable() {
-        return this._isUnbreakable;
+        return (this._type === ppTypes.SOLID || this._type === ppTypes.FLUID);
     }
 
     resolveRejectPrep(values: any[]): any[] {
+        const name = this.name!;
         if (this._type === ppTypes.SOLID || this.isSettled || this.isTriggered)
-            console.log(`Promise (name: ${this.name.toString()} already Settled earlier with and is now ${this._type}`);
+            console.log(`Promise (name: ${name.toString()} already Settled earlier with and is now ${this._type}`);
         //throw new IllegalOperationError('resolve cannot be forced on ' + ppTypes.SOLID);
 
         const key = this.isSecured ? values.pop() : undefined;
-        if (!this.hasValidKey(key))
+        if (!this.isValidKey(key))
             throw new IllegalOperationError(
-                `This instance (${this.name.toString()} is secure. You must provide matching key as the last argument`
+                `This instance (${name!.toString()} is secure. You must provide matching key as the last argument`
             );
 
         return values;
@@ -385,10 +391,55 @@ class PPromise {
     }
 
     static getDeferred(...args: any[]) {
-        //  return new PPromise(...args);
+          return new PPromise(...args as [any?,any?]);
     }
 
-    sever(): PPromise {
+    static find( name : keyType, key? : keyType): PPromise | undefined{
+        if(typeof name === 'undefined') return
+
+        //Symbols not supported as keys yet
+        //TODO: https://github.com/microsoft/TypeScript/issues/1863
+        let idx = name.toString();
+
+        const candidate :PPromise = Registry[idx];
+
+        if( !candidate ) return;
+
+        if (!candidate.isSecured) return candidate;
+
+        if( typeof key === 'undefined') return;
+
+        if (candidate.isValidKey( key ) ) return candidate;
+
+        return;
+    }
+
+    sever(...args :any[] ): PPromise {
+
+        if( this.isSecured) {
+            let key = args.pop() as keyType
+            PPromise.checkPermissions( key, this._secret );
+        }
+
+        let chainEvent = args[0];
+
+        if( chainEvent === 'resolve' ) {
+            try {
+                this.chain.resolve(this._chainSecret )
+            }catch(e){
+                console.log('chain failed to resolve',e.message);
+            }
+        } else if( chainEvent === 'reject'){
+               try {
+                this.chain.reject(this._chainSecret)
+            }catch(e){
+                console.log('chain failed to resolve',e.message);
+            }
+
+        } else if( typeof chainEvent !== 'undefined'){
+            throw new IllegalOperationError(`${chainEvent} is not a valid sever operation`);
+        }
+
         if (this.isUnbreakable)
             throw new IllegalOperationError(`You cannot sever a ${this.options.type}`);
 
@@ -396,21 +447,14 @@ class PPromise {
             //new chain
             this.createChain();
         }
+
         return this; //include case: not-unbreakable
     }
 
-    severSafely(): PPromise {
-        try {
-            this.sever();
-        } catch (e) {
-            console.log(e);
-        }
-        return this;
-    }
+    upgradeType(type: ppTypes, key?: keyType): void {
 
-    upgradeType(type: ppTypes, key?: symbol|string): void {
-
-        this.checkPermissions(key);
+        if (this.isSecured)
+            PPromise.checkPermissions(key, this._secret);
 
         // no change
         if (this._type === type) return;
@@ -427,13 +471,11 @@ class PPromise {
                 //remove the chain
                 //--> don't think this is necessary
 
-                //set unbreakable = true
-                this._isUnbreakable = true;
-
                 //continue to allow deferred
 
+                //set unbreakable = true
                 //change the type
-                this._type = ppTypes.GAS;
+                this._type = ppTypes.FLUID;
 
             } catch (e) {
                 console.log(e);
@@ -446,13 +488,11 @@ class PPromise {
                 //remove the chain
                 //--> don't think this is necessary
 
-                //set unbreakable = true
-                this._isUnbreakable = true;
-
                 //disallow deferred
                 //resolve immediately
                 this._resolve();
 
+                //set unbreakable = true
                 //change the type
                 this._type = ppTypes.SOLID;
 
@@ -471,12 +511,15 @@ class PPromise {
 
     then(...args: any): Promise<any> {
         console.log('then called by ', this.name.toString());
+        return this.promise.then(...args);
+        /*
         if (this.isUnbreakable) return this.promise.then(...args);
-        return this.chain.then(...args)
+        return this.chain.then(...args) */
     }
 
     catch(...args: any): Promise<any> {
         return this.promise.catch(...args);
+
     }
 
     finally(...args: any): Promise<any> {

@@ -13,4 +13,11 @@ type optionsType = {
 
 type resolveRejectArgs = [any, any?];
 
-export {ppTypes,optionsType,resolveRejectArgs}
+type keyType = string | symbol ;
+/*
+type registryType = {
+    [key in keyof registryType ] : string | symbol
+}*/
+
+
+export {ppTypes,optionsType,resolveRejectArgs,keyType}

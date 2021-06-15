@@ -100,12 +100,12 @@ describe('Given All PPromise Types', () => {
         expect(myPPromise.isFulfilled).toBe(false);
     });
 
-    test('secured PPromise requires a matching key to upgrade type or errors', ()=>{
+    test('secured PPromise requires a matching key to upgrade type or errors out', ()=>{
         const myPPromise = new PPromise(['original value', 'for reject'], {
             secret : 'any secret'
         });
         expect(()=>{
-            myPPromise.upgradeType(ppTypes.SOLID, 'any secret')
+            myPPromise.upgradeType(ppTypes.SOLID, 'different secret')
         }).toThrow(IllegalOperationError);
     });
 
@@ -121,6 +121,23 @@ describe('Given All PPromise Types', () => {
             myPPromise.upgradeType(ppTypes.SOLID, Symbol('123'))
         }).toThrow(TypeError);
     });
+
+    test('An name-index registry of PPromises is searchable by name', async()=>{
+        const myPPromise = new PPromise([Math.random()*1000, 'for reject'], {
+            name : '123'
+        });
+            const myPPromise2 = new PPromise([Math.random(), 'for reject'], {
+            name : Symbol('456')
+        });
+
+        const whichPromise = PPromise.find('123');
+        await whichPromise!.resolve();
+        expect(whichPromise!.result).toEqual(myPPromise.result);
+        const whichPromise2 = PPromise.find(Symbol('456'));
+        await whichPromise2!.resolve();
+        expect(whichPromise2!.result).toEqual(myPPromise2.result);
+
+    })
 
     test.todo('pushThen does same thing as then except instance is returned insead of promise');
 
