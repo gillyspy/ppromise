@@ -148,13 +148,14 @@ describe('Given All PPromise Types', () => {
             name: 'myPPromise',
             type: ppTypes.SOLID,
             registry: myRegistry
-        });
+        } as optionsType);
         await myPPromise.promise;
         const foundPP = myRegistry['myPPromise'];
         expect(foundPP instanceof PPromise).toBe(true);
         expect(foundPP.result).toBeGreaterThanOrEqual(0);
         expect(foundPP.result).toBeLessThanOrEqual(1);
     })
+
     test.todo('pushThen does same thing as then except instance is returned insead of promise');
 
     test.todo('Triggered & pending PPromise is same as calling resolve on a solid promise');

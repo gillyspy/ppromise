@@ -60,12 +60,13 @@ class PPromise {
 
         const that = this;
 
-        let callback;
+        let callback, registry : registryType;
 
         //apply options
         if (typeof this.options.type !== 'undefined') this._type = this.options.type;
         this.name = this.options?.name || Symbol('unknown');
-        this._secret = this.options?.secret || undefined;
+        this._secret = this.options?.secret;
+        registry = this.options.registry || Registry;
 
         //init states
         this.initStates();
@@ -138,8 +139,10 @@ class PPromise {
             this.createChain();
 
         //TODO: https://github.com/microsoft/TypeScript/issues/1863
-        if(/^symbol.chain/i.test( this.name.toString()))
-            Registry[this.name.toString()] = this;
+
+        if(!/^symbol.chain/i.test( this.name.toString()))
+            registry[this.name.toString()] = this;
+
     }
 
 

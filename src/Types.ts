@@ -17,7 +17,7 @@ type optionsType = {
     isUnbreakable? : boolean;
     type? : ppTypes;
     secret? : keyType;
-    registry : object | registryType;
+    registry? : registryType;
 }
 
 type resolveRejectArgs = [any, any?];
