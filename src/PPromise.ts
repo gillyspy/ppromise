@@ -5,9 +5,10 @@ import InvalidDefinitionError from "./errors/InvalidDefinitionError";
 interface promiseCb {
     (resolve: Function, reject: Function): void;
 }
+const Registry = {};
 
 class PPromise {
-    readonly name?: string;
+    readonly name?: string|symbol = Symbol('unknown');
     private _type: ppTypes = ppTypes.FLUID;
     private _isFulfilled: boolean = false;
     private _isPending: boolean = true;
@@ -181,7 +182,7 @@ class PPromise {
     private createChain(): void {
         if (this.isUnbreakable) return;
         this._Chain = new PPromise({
-            name: 'chain of ' + this.name,
+            name: this._chainSecret,
             type: ppTypes.FLUID,
             isUnbreakable: true,
             secret: this._chainSecret
@@ -255,13 +256,13 @@ class PPromise {
 
     resolveRejectPrep(values: any[]): any[] {
         if (this._type === ppTypes.SOLID || this.isSettled || this.isTriggered)
-            console.log(`Promise (name: ${this.name} already Settled earlier with and is now ${this._type}`);
+            console.log(`Promise (name: ${this.name.toString()} already Settled earlier with and is now ${this._type}`);
         //throw new IllegalOperationError('resolve cannot be forced on ' + ppTypes.SOLID);
 
         const key = this.isSecured ? values.pop() : undefined;
         if (!this.hasValidKey(key))
             throw new IllegalOperationError(
-                `This instance (${this.name} is secure. You must provide matching key as the last argument`
+                `This instance (${this.name.toString()} is secure. You must provide matching key as the last argument`
             );
 
         return values;
@@ -469,7 +470,7 @@ class PPromise {
     }
 
     then(...args: any): Promise<any> {
-        console.log('then called by ', this.options.name);
+        console.log('then called by ', this.name.toString());
         if (this.isUnbreakable) return this.promise.then(...args);
         return this.chain.then(...args)
     }

@@ -122,6 +122,8 @@ describe('Given All PPromise Types', () => {
         }).toThrow(TypeError);
     });
 
+    test.todo('pushThen does same thing as then except instance is returned insead of promise');
+
     test.todo('Triggered & pending PPromise is same as calling resolve on a solid promise');
 
     test.todo('Calling resolve on a settle PPromise will do nothing');
