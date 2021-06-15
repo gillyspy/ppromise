@@ -154,6 +154,22 @@ class PPromise {
         return options;
     }
 
+    private checkPermissions(key?: string | symbol): void {
+        if (!this.isSecured) return;
+
+        let keyType = typeof key;
+        if( keyType === 'undefined' || keyType !== typeof this._secret)
+            throw new TypeError(`Key provided is type ${keyType} and not in the correct format of ${typeof this._secret}`);
+
+        if (keyType !== 'string' && keyType  !== 'symbol')
+            throw new TypeError(`Key provided is type ${keyType} and not in the correct format of ${typeof this._secret}`);
+
+        if (this._secret !== key && typeof key !== 'undefined')
+            throw new IllegalOperationError(
+                `Key ${key.toString()} does not match secret`
+            )
+    }
+
     private hasValidKey(matchingKey?: string | symbol): boolean {
         if (!this.isSecured) return true;
 
@@ -391,18 +407,21 @@ class PPromise {
         return this;
     }
 
-    upgradeType( type?: ppTypes ):void{
+    upgradeType(type: ppTypes, key?: symbol|string): void {
+
+        this.checkPermissions(key);
+
         // no change
-        if( this._type === type ) return;
+        if (this._type === type) return;
 
         //impossible change
         // SOLID to !SOLID
         // !GAS to GAS
-        if( type === ppTypes.GAS || this._type === ppTypes.SOLID )
+        if (type === ppTypes.GAS || this._type === ppTypes.SOLID)
             throw new IllegalOperationError(`Cannot downgrade ${this._type} to ${type}`);
 
         //allowed change
-        if( type === ppTypes.FLUID && this._type === ppTypes.GAS ){
+        if (type === ppTypes.FLUID && this._type === ppTypes.GAS) {
             try {
                 //remove the chain
                 //--> don't think this is necessary
@@ -415,13 +434,13 @@ class PPromise {
                 //change the type
                 this._type = ppTypes.GAS;
 
-            }catch(e){
+            } catch (e) {
                 console.log(e);
                 throw new IllegalOperationError(`upgrade from ${this._type} to ${type} failed. See log`);
             }
         }
 
-         if( type === ppTypes.SOLID ){
+        if (type === ppTypes.SOLID) {
             try {
                 //remove the chain
                 //--> don't think this is necessary
@@ -436,14 +455,13 @@ class PPromise {
                 //change the type
                 this._type = ppTypes.SOLID;
 
-            }catch(e){
+            } catch (e) {
                 console.log(e);
                 throw new IllegalOperationError(`upgrade from ${this._type} to ${type} failed. See log`);
             }
         }
 
     }
-
 
     pushThen(...args: any): PPromise {
         this.then(args);

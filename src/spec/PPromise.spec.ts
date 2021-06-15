@@ -68,12 +68,23 @@ describe('Given All PPromise Types', () => {
         expect(myPPromise.result).toEqual('original value');
     });
 
-    test('you can pass in a symbol or string as a key', ()=>{
+    test('you can pass in a symbol or string as a key', async()=>{
         const mySecret = Symbol('secret');
         const myPPromise = new PPromise({
             secret : mySecret
         });
         expect(myPPromise instanceof PPromise).toBe(true);
+        await myPPromise.resolve('does not matter',mySecret);
+        expect(myPPromise.result).toBe('does not matter');
+
+        const mySecret2 = 'string secret';
+        const myPPromise2 = new PPromise({
+            secret : mySecret2
+        });
+         expect(myPPromise2 instanceof PPromise).toBe(true);
+        await myPPromise2.resolve('does not matter',mySecret2);
+        expect(myPPromise2.result).toBe('does not matter');
+
     });
 
 
@@ -89,9 +100,31 @@ describe('Given All PPromise Types', () => {
         expect(myPPromise.isFulfilled).toBe(false);
     });
 
+    test('secured PPromise requires a matching key to upgrade type or errors', ()=>{
+        const myPPromise = new PPromise(['original value', 'for reject'], {
+            secret : 'any secret'
+        });
+        expect(()=>{
+            myPPromise.upgradeType(ppTypes.SOLID, 'any secret')
+        }).toThrow(IllegalOperationError);
+    });
+
+    test('secured PPromise allows only a string or symbol type for a key (also type must match)', ()=>{
+          const myPPromise = new PPromise(['original value', 'for reject'], {
+            secret : '123'
+        });
+        expect(()=>{
+            myPPromise.upgradeType(ppTypes.SOLID, undefined)
+        }).toThrow(TypeError);
+
+        expect(()=>{
+            myPPromise.upgradeType(ppTypes.SOLID, Symbol('123'))
+        }).toThrow(TypeError);
+    });
+
     test.todo('Triggered & pending PPromise is same as calling resolve on a solid promise');
 
-    test.todo('Calling resolve on a settle PPromise will ????');
+    test.todo('Calling resolve on a settle PPromise will do nothing');
     /***
      * if a function is passed as the value then
      */
