@@ -20,7 +20,6 @@ class PPromise {
     private _isPending: boolean = true;
     private _isRejected: boolean = false;
     private _isResolved: boolean = false;
-    private _isSettled: boolean = false;
     private _value: any;
     private readonly _resolveCallback?: Function;
     private readonly _rejectCallback?: Function;
@@ -232,7 +231,7 @@ class PPromise {
     }
 
     get isSettled() {
-        return this._isSettled;
+        return this.isFulfilled || this.isRejected
     }
 
     get isFulfilled() {
@@ -325,7 +324,6 @@ class PPromise {
             that._isResolved = true;
             that._isPending = false;
             that._isRejected = false;
-            that._isSettled = true;
 
             // update internal _value ( result )
             that._value = fn ? fn(v) : v;
@@ -375,7 +373,6 @@ class PPromise {
             that._isResolved = false;
             that._isPending = false;
             that._isRejected = true;
-            that._isSettled = true;
             that._reason = fn ? fn(v[0]) : v[0];
             return that._reason
         };
@@ -386,7 +383,6 @@ class PPromise {
         this._isPending = true;
         this._isRejected = false;
         this._isResolved = false;
-        this._isSettled = false;
         this._isTriggered = false;
     }
 
