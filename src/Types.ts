@@ -1,9 +1,5 @@
 import PPromise from "./PPromise";
 
-type registryType = {
-    [ name : string] : PPromise
-}
-
 enum ppTypes {
     'SOLID' = 'solid:promise',
     'FLUID' = 'fluid:deferred',
@@ -17,7 +13,7 @@ type optionsType = {
     isUnbreakable? : boolean;
     type? : ppTypes;
     secret? : keyType;
-    registry? : registryType;
+    registry? : object;
 }
 
 type resolveRejectArgs = [any, any?];

@@ -6,14 +6,12 @@ interface promiseCb {
     (resolve: Function, reject: Function): void;
 }
 
-type registryType = {
-    [name: string]: PPromise
-}
 
-const Registry: registryType = {};
+const Registry = new WeakMap();
+const RegistryKeys = new Map()
 
 class PPromise {
-    readonly name: keyType = Symbol(Math.random().toString());
+    readonly _name: keyType[] = [Symbol(Math.random().toString())];
     private _type: ppTypes = ppTypes.FLUID;
     private _isFulfilled: boolean = false;
     private _isPending: boolean = true;
@@ -60,13 +58,13 @@ class PPromise {
 
         const that = this;
 
-        let callback, registry: registryType, promise;
+        let callback, promise;
 
         //apply options
         if (typeof this.options.type !== 'undefined') this._type = this.options.type;
-        this.name = this.options?.name || Symbol('unknown');
+        this._name = [this.options?.name || Symbol('unknown')];
         this._secret = this.options?.secret;
-        registry = this.options.registry || Registry;
+
 
         //init states
         this.initStates();
@@ -146,8 +144,10 @@ class PPromise {
 
         //TODO: https://github.com/microsoft/TypeScript/issues/1863
 
-        if (!/^symbol.chain/i.test(this.name.toString()))
-            registry[this.name.toString()] = this;
+        if (!/^symbol.chain/i.test(this.name.toString())) {
+            RegistryKeys.set(this.name, this._name);
+            Registry.set(this._name, this);
+        }
 
     }
 
@@ -222,6 +222,10 @@ class PPromise {
         if (!this._isPending) {
             return this._value;
         }
+    }
+
+    get name(): keyType {
+        return this._name[0];
     }
 
     get type(): ppTypes {
@@ -306,9 +310,9 @@ class PPromise {
 
         const that = this;
 
-        return new Promise( (resolve)=> {
+        return new Promise((resolve) => {
             setTimeout(() => {
-                resolve( that.resolve( ...args ) )
+                resolve(that.resolve(...args))
             }, seconds)
         });
     }
@@ -414,14 +418,17 @@ class PPromise {
         return new PPromise(...args as [any?, any?]);
     }
 
-    static find(name: keyType, key?: keyType): PPromise | undefined {
+    static find(name: keyType | keyType[], key?: keyType): PPromise | undefined {
         if (typeof name === 'undefined') return
 
-        //Symbols not supported as keys yet
-        //TODO: https://github.com/microsoft/TypeScript/issues/1863
-        let idx = name.toString();
+        let idx = name;
+        if(!Array.isArray(name)){
+            idx = RegistryKeys.get(name) ;
+            if( !idx ) return;
+        }
 
-        const candidate: PPromise = Registry[idx];
+        // @ts-ignore
+        const candidate: PPromise = Registry.get(idx);
 
         if (!candidate) return;
 
@@ -445,13 +452,13 @@ class PPromise {
 
         if (chainEvent === 'resolve') {
             try {
-                this.chain.resolve(...args,this._chainSecret)
+                this.chain.resolve(...args, this._chainSecret)
             } catch (e) {
                 console.log('chain failed to resolve', e.message);
             }
         } else if (chainEvent === 'reject') {
             try {
-                this.chain.reject(...args,this._chainSecret)
+                this.chain.reject(...args, this._chainSecret)
             } catch (e) {
                 console.log('chain failed to resolve', e.message);
             }

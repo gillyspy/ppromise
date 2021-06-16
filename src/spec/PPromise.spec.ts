@@ -129,32 +129,19 @@ describe('Given All PPromise Types', () => {
         const myPPromise = new PPromise([Math.random() * 1000, 'for reject'], {
             name: '123'
         } as optionsType);
+        const uniqueName = Symbol('456');
         const myPPromise2 = new PPromise([Math.random(), 'for reject'], {
-            name: Symbol('456')
+            name: uniqueName
         } as optionsType);
 
         const whichPromise = PPromise.find('123');
         await whichPromise!.resolve();
         expect(whichPromise!.result).toEqual(myPPromise.result);
-        const whichPromise2 = PPromise.find(Symbol('456'));
+        const whichPromise2 = PPromise.find(uniqueName);
         await whichPromise2!.resolve();
         expect(whichPromise2!.result).toEqual(myPPromise2.result);
 
-    })
-
-    test('object passed to contructor (via options.registry) will be the register for PPromises', async () => {
-        const myRegistry: registryType = {};
-        const myPPromise = new PPromise([Math.random(), 'for reject'], {
-            name: 'myPPromise',
-            type: ppTypes.SOLID,
-            registry: myRegistry
-        } as optionsType);
-        await myPPromise.promise;
-        const foundPP = myRegistry['myPPromise'];
-        expect(foundPP instanceof PPromise).toBe(true);
-        expect(foundPP.result).toBeGreaterThanOrEqual(0);
-        expect(foundPP.result).toBeLessThanOrEqual(1);
-    })
+    });
 
     test('resolve after a given duration in ms', async ()=>{
         const key = Symbol('secret');

@@ -253,8 +253,7 @@ attempt to resolve it will be ignored an `IllegalOperationError`.
 i.e. 
 A settled|triggered PPromise cannot be resolved or rejected differently regardless of its type. 
 
-A settled|triggered PPromise cannot be severed regardless of its type.  
-
+A settled|triggered PPromise cannot be severed regardless of its type.
 
 -------------------------------------------------------
 Future Possibilities

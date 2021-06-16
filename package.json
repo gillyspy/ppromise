@@ -1,7 +1,7 @@
 {
-  "name": "ppromise",
+  "name": "@gillyspy/ppromise",
   "version": "1.0.0",
-  "description": "promise library making promises easier to work with, exaime and optionally exposing additional patterns like deferred",
+  "description": "promise library making promises easier to work with, examine and optionally exposing additional patterns like deferred",
   "main": "dist/ppromise.js",
   "scripts": {
     "build" : "tsc",
